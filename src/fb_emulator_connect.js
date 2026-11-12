@@ -2,7 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 
 const firebaseConfig = {
-  projectId: "samalahkita-44e68", // REQUIRED for emulator to function
+  projectId: "smart-traffic-93b67", // REQUIRED for emulator to function
 };
 
 const app = initializeApp(firebaseConfig);

@@ -2,13 +2,13 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+    apiKey: "AIzaSyBc_AVxBXMnK1Z2jwqq-GGGzCmsf8HIpds",
+    authDomain: "smart-traffic-93b67.firebaseapp.com",
+    projectId: "smart-traffic-93b67",
+    storageBucket: "smart-traffic-93b67.firebasestorage.app",
+    messagingSenderId: "486263542637",
+    appId: "1:486263542637:web:b4c6b04678bb583381c064",
+    measurementId: "G-7BFWYR207V"
 };
 
 // Initialize Firebase
