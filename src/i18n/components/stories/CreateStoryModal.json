@@ -1,0 +1,16 @@
+{
+  "eng": {
+    "story_text_instruction": "Tell your story.",
+    "user_info_instruction": "A little information about you is needed. You may skip, but it would greatly improve user experience.",
+    "user_info_instruction_tooltip": "Your information is only used for the purposes of aggregating anonymous demographic data among all users for charts and categorical ranking. No other detail will be taken here nor in the background without your knowledge and consent.",
+    "send_confirm_instruction": "Your story is ready to be posted.",
+    "story_share_instruction": "Download and share your story to social media. Hide any detail of your choosing below."
+  },
+  "bm": {
+    "story_text_instruction": "Ceritakan luahan anda.",
+    "user_info_instruction": "Kami perlukan sedikit maklumat anda. Anda boleh langkau, tetapi ia sangat membantu menambah baik pengalaman pengguna.",
+    "user_info_instruction_tooltip": "Maklumat anda hanya digunakan untuk mengenal pasti corak luahan tanpa nama dalam kalangan pengguna dan membuat carta 'ranking'. Tiada perincian lain yang akan diambil samada di sini atau di latar belakang tanpa pengetahuan dan kebenaran anda.",
+    "send_confirm_instruction": "Cerita anda sedia untuk dihantar.",
+    "story_share_instruction": "Muat turun dan kongsi cerita anda di media sosial. Pilih perincian yang anda mahu sembunyikan di bawah."
+  }
+}

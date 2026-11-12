@@ -1,0 +1,201 @@
+@import url("https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&display=swap");
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline{
+  /* Global font */
+  --font-merriweather: "Merriweather", Georgia, serif;
+  --font-weight: 400;
+
+  /* Marquee */
+  --time: 100s;
+  --animate-scroll: scroll var(--time) linear infinite;
+  @keyframes scroll {
+    0% {
+      transform: translateX(100);
+    }
+
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+
+  /* Typewriter Effect */
+  --animate-typewriter: typewriter var(--duration, 1000s) steps(var(--steps, 1000)) alternate, blink 1s;
+  @keyframes typewriter {
+    0% {
+      width: 0%;
+      visibility: hidden;
+    }
+
+    100% {
+      width: 100%;
+    }
+  }
+
+  /* Slide Effect (alt for Typewriter on smaller screens) */
+  --animate-slide: slide 0.5s;
+  @keyframes slide {
+    0% {
+      transform: translateY(-100%); 
+    }
+
+    100% {
+      transform: translateY(0%);
+    }
+  }
+
+  @keyframes blink {
+    50% {
+      border-color: transparent;
+    }
+
+    100% {
+      border-color: currentColor;
+    }
+  }
+}
+
+/* Light and Dark mode variables */
+
+
+html {
+  font-family: var(--font-merriweather);
+  font-weight: var(--font-weight);
+}
+
+.pill {
+  @apply bg-white hover:bg-[#f1efe3] inline-flex m-[7px] md:m-[10px] tracking-[0.1em] text-[#030000] px-[10px] py-[5px] md:px-[20px] md:py-[15px]
+  rounded-[25px] border border-white transition text-sm md:text-base
+  duration-500 shadow-[0px_0px_5px_rgba(0,0,0,0.3)] dark:bg-black dark:text-gray-300 dark:shadow-white dark:border-black
+  dark:hover:bg-gray-800;
+}
+
+
+.pill-feed-title {
+    @apply animate-slide tracking-[0.1em]
+    text-[#030000] px-[20px] py-[15px]
+    rounded-[25px] bg-white
+    duration-500 shadow-[0px_0px_5px_rgba(0,0,0,0.3)]
+    dark:bg-black dark:text-gray-300 dark:shadow-white dark:border-black;
+}
+
+.pill-feed-addstory {
+    @apply inline-flex 
+    text-[#030000] px-[20px]
+    rounded-[25px] hover:bg-[#f1efe3] bg-white/10 backdrop-blur-md
+    duration-500 shadow-[0px_0px_5px_rgba(0,0,0,0.3)]
+    dark:bg-black/10 dark:text-gray-300 dark:shadow-white dark:border-black dark:hover:bg-gray-800;
+}
+
+.pill-small {
+    @apply text-xs hover:bg-[#f1efe3] inline-flex m-[5px] tracking-[0.1em]
+    text-[#030000] px-[10px] py-[5px] cursor-pointer
+    rounded-[25px] border border-white transition
+    duration-500 shadow-[0px_0px_5px_rgba(0,0,0,0.3)]
+    dark:text-gray-300 dark:shadow-white dark:border-black dark:hover:bg-gray-800;
+}
+
+.pill-small-non-interactive {
+    @apply text-xs inline-flex my-[2px] tracking-[0.1em]
+    text-[#030000] px-[10px] py-[5px] 
+    rounded-[25px] border border-white transition
+    duration-500 shadow-[0px_0px_5px_rgba(0,0,0,0.3)]
+    dark:bg-black dark:text-gray-300 dark:shadow-white dark:border-black;
+}
+
+.pill-stack-card {
+  @apply m-[10px] cursor-pointer 
+    bg-white text-[#030000] px-[30px] py-[40px]
+    transition rounded-[25px]
+    duration-500 shadow-[0px_0px_5px_rgba(0,0,0,0.3)];
+}
+
+.pill-card {
+  @apply whitespace-normal break-words w-full
+    bg-white text-[#030000] px-[20px] py-[20px]
+    rounded-[25px] border border-white transition
+    duration-500 shadow-[0px_0px_5px_rgba(0,0,0,0.3)];
+}
+
+.pill-card-story {
+  @apply 
+    bg-white text-[#030000] px-[20px] py-[20px]
+    border border-white transition shadow-[0px_0px_5px_rgba(0,0,0,0.3)]
+    duration-500 rounded-[25px] border border-white
+    dark:bg-black dark:text-gray-300 dark:border-black dark:shadow-white;
+}
+
+.pill-card-story-example {
+  @apply w-100 bg-white text-[#030000]
+  rounded-[25px] border border-white transition
+  duration-500 shadow-[0px_0px_5px_rgba(0,0,0,0.3)]
+  dark:bg-black dark:text-gray-300 dark:shadow-white dark:border-black
+}
+
+.pill-modal {
+  @apply whitespace-normal break-words m-[10px] w-[500px]
+    bg-white text-[#030000] px-[30px] py-[25px]
+    rounded-[25px] border border-white transition
+    duration-500 shadow-[0px_0px_5px_rgba(0,0,0,0.3)]
+    dark:bg-black dark:text-gray-300 dark:shadow-white dark:border-black;
+}
+
+.pill-searchbar {
+  @apply 
+    bg-white text-[#030000] focus:bg-[#f1efe3] hover:bg-[#f1efe3]
+    rounded-[25px] transition focus:border-none focus:outline-none
+    duration-500 shadow-[0px_0px_5px_rgba(0,0,0,0.3)] dark:bg-black dark:text-gray-300 dark:shadow-white dark:border-black
+    dark:focus:bg-gray-800 dark:hover:bg-gray-800;
+}
+
+.pill-searchresult {
+  @apply absolute left-0 mt-2
+    whitespace-normal break-words w-full
+    bg-white z-50
+    rounded-[25px] transition duration-500 
+    shadow-[0px_0px_5px_rgba(0,0,0,0.3)]
+    max-h-55 overflow-y-auto dark:bg-black dark:text-gray-300 dark:shadow-white dark:border-black;
+}
+
+.pill-searchresult-item {
+  @apply whitespace-normal break-words text-[#030000] px-[10px] py-[5px] hover:bg-[#f1efe3]
+  rounded-[25px] cursor-pointer text-left dark:bg-black dark:text-gray-300 dark:shadow-white dark:border-black
+  dark:hover:bg-gray-800;
+}
+
+.my-tooltip {
+  @apply text-xs h-[16px] px-[6px] border border-gray-400 rounded cursor-pointer hover:bg-[#f1efe3]
+  dark:bg-black dark:text-gray-300 dark:shadow-white dark:hover:bg-gray-800;
+}
+
+.my-radio {
+  @apply rounded text-sm px-2 py-1 cursor-pointer border bg-white hover:bg-[#f1efe3] data-checked:bg-[#f1efe3] dark:border-white
+  dark:bg-black dark:text-gray-300 dark:shadow-white dark:border-black dark:data-checked:bg-gray-800 dark:hover:bg-gray-800;
+}
+
+.my-multi-select {
+  @apply rounded text-sm px-2 py-1 cursor-pointer border hover:bg-[#f1efe3]
+  dark:text-gray-300 dark:shadow-white dark:hover:bg-gray-800;
+}
+
+.my-checkbox {
+  @apply w-[18px] h-[18px] rounded text-sm cursor-pointer border hover:bg-[#f1efe3]
+  dark:bg-black dark:text-gray-300 dark:shadow-white;
+}
+
+.my-select {
+  @apply rounded text-sm px-2 py-1 cursor-pointer border bg-white
+  dark:bg-black dark:text-gray-300 dark:shadow-white;
+}
+
+.my-option {
+  @apply rounded text-sm px-2 py-1 cursor-pointer border bg-white hover:bg-[#f1efe3]
+  dark:bg-black dark:text-gray-300 dark:shadow-white;
+}
+
+
+
+
+
