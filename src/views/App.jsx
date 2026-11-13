@@ -1,19 +1,16 @@
-import '../index.css'
-import HomeMarquee from '../components/marquee/HomeMarquee';
-import Face from "../components/face/Face";
-import Chart from "../components/chart/Chart";
-import Footer from '../components/footer/Footer';
+import { useTranslation } from "react-i18next";
 
 export default function App() {
-    
-    return (
-        <div className="">
-            <HomeMarquee />
-            <div className='mx-auto px-6 max-w-3xl'>
-                <Face />
-                <Chart />
-            </div>
-            <Footer />
-        </div>
-    )
+  const { t } = useTranslation();
+
+  return (
+    <div>
+      <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl p-6 text-center">
+        <h2 className="text-lg font-bold mb-2">{t("nav.dashboard")}</h2>
+        <p className="text-[var(--color-text-secondary)] text-sm">
+          {t("coming_soon")} — Phase 2
+        </p>
+      </div>
+    </div>
+  );
 }

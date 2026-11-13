@@ -2,16 +2,34 @@ rules_version='2'
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Locations — read-only for authenticated users
+    match /locations/{locationId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Period stats — read-only for authenticated users
+    match /periods/{periodId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Siasatan records — read for all, write for authenticated
+    match /siasatan/{siasatanId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Contributing factors — read-only
+    match /factors/{factorId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // TODO: Replace with proper role-based rules when auth is added
+    // Temporary fallback — remove before production
     match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
       allow read, write: if request.time < timestamp.date(2026, 12, 12);
     }
   }

@@ -1,47 +1,26 @@
-import { StrictMode, useEffect } from 'react'
-import './index.css'
-import './i18n';
+import { StrictMode } from "react";
+import "./index.css";
+import "./i18n";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router";
-import Layout from './views/Layout';
-import App from './views/App'
-import Stories from './views/Stories';
-import { ThemeProvider } from './theme-context';
-import PrivacyNotice from './views/PrivacyNotice';
-import Disclaimer from './views/Disclaimer';
-import ScrollToTop from './views/ScrollToTop';
-import { useNavigate } from 'react-router';
+import { PeriodProvider } from "./period-context";
+import Layout from "./views/Layout";
+import App from "./views/App";
+import Siasatan from "./views/Siasatan";
+import Analysis from "./views/Analysis";
 
-ReactDOM.createRoot(root).render(
+ReactDOM.createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <ThemeProvider>
-      <BrowserRouter basename='/samalahkita'>
-        <RedirectHandler />
-        <ScrollToTop />
+    <PeriodProvider>
+      <BrowserRouter basename="/smarttraffic">
         <Routes>
           <Route element={<Layout />}>
             <Route path="" element={<App />} />
-            <Route path="/stories/situation/:situationid" element={<Stories />} />
-            <Route path="/privacy-notice" element={<PrivacyNotice />} />
-            <Route path="/disclaimer" element={<Disclaimer />} />
+            <Route path="/siasatan" element={<Siasatan />} />
+            <Route path="/analysis" element={<Analysis />} />
           </Route>
         </Routes>
       </BrowserRouter>
-    </ThemeProvider>
+    </PeriodProvider>
   </StrictMode>
 );
-
-function RedirectHandler() {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const redirect = params.get('redirect');
-
-    if (redirect) {
-      navigate(redirect, { replace: true });
-    }
-  }, []);
-
-  return null;
-}
