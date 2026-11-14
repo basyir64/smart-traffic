@@ -26,3 +26,4 @@ dist-ssr
 
 #Secrets
 client_secret_1023186585337-717fbivfn2kmshigoqa2l3ro6njjjsve.apps.googleusercontent.com.json
+src/data/seedUsers.js
