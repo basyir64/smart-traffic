@@ -13,9 +13,6 @@
  *   node scripts/onboard-user.mjs --seed-all
  */
 
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
@@ -35,52 +32,15 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { seedUsers } from "../src/data/seedUsers.js";
+import { getFirebaseConfigFromEnv } from "./load-env.mjs";
 
-// Load .env.local into process.env if present
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const envLocalPath = path.resolve(__dirname, "../.env.local");
-if (fs.existsSync(envLocalPath)) {
-  const lines = fs.readFileSync(envLocalPath, "utf8").split(/\r?\n/);
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eqIdx = trimmed.indexOf("=");
-    if (eqIdx === -1) continue;
-    const key = trimmed.slice(0, eqIdx).trim();
-    const val = trimmed
-      .slice(eqIdx + 1)
-      .trim()
-      .replace(/^(['"])(.*)\1$/, "$2");
-    if (key && process.env[key] === undefined) {
-      process.env[key] = val;
-    }
-  }
-}
+const firebaseConfig = getFirebaseConfigFromEnv();
 
 function getSeedPassword(username) {
   if (!username) return null;
   const envKey = `SEED_PASSWORD_${String(username).toUpperCase()}`;
   return process.env[envKey] || null;
 }
-
-// Default / fallback Firebase config (works with emulator & cloud project)
-const firebaseConfig = {
-  apiKey:
-    process.env.VITE_FIREBASE_API_KEY ||
-    "AIzaSyBc_AVxBXMnK1Z2jwqq-GGGzCmsf8HIpds",
-  authDomain:
-    process.env.VITE_FIREBASE_AUTH_DOMAIN ||
-    "smart-traffic-93b67.firebaseapp.com",
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID || "smart-traffic-93b67",
-  storageBucket:
-    process.env.VITE_FIREBASE_STORAGE_BUCKET ||
-    "smart-traffic-93b67.firebasestorage.app",
-  messagingSenderId:
-    process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "486263542637",
-  appId:
-    process.env.VITE_FIREBASE_APP_ID ||
-    "1:486263542637:web:b4c6b04678bb583381c064",
-};
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);

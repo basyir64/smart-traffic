@@ -27,24 +27,9 @@ import { seedLocations } from "../src/data/seedLocations.js";
 import { seedPeriods } from "../src/data/seedPeriods.js";
 import { seedSiasatan } from "../src/data/seedSiasatan.js";
 import { seedPenguatkuasaan } from "../src/data/seedPenguatkuasaan.js";
+import { getFirebaseConfigFromEnv } from "./load-env.mjs";
 
-const firebaseConfig = {
-  apiKey:
-    process.env.VITE_FIREBASE_API_KEY ||
-    "AIzaSyBc_AVxBXMnK1Z2jwqq-GGGzCmsf8HIpds",
-  authDomain:
-    process.env.VITE_FIREBASE_AUTH_DOMAIN ||
-    "smart-traffic-93b67.firebaseapp.com",
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID || "smart-traffic-93b67",
-  storageBucket:
-    process.env.VITE_FIREBASE_STORAGE_BUCKET ||
-    "smart-traffic-93b67.firebasestorage.app",
-  messagingSenderId:
-    process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "486263542637",
-  appId:
-    process.env.VITE_FIREBASE_APP_ID ||
-    "1:486263542637:web:b4c6b04678bb583381c064",
-};
+const firebaseConfig = getFirebaseConfigFromEnv();
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
