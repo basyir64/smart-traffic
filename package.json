@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview --port 8080"
+    "preview": "vite preview --port 8080",
+    "seed:users": "node scripts/onboard-user.mjs --seed-all",
+    "seed:data": "node scripts/seed-firestore.mjs"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",

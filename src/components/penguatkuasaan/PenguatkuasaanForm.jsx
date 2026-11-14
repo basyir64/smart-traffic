@@ -1,0 +1,281 @@
+import { useState, useEffect } from "react";
+import Chip from "../shared/Chip";
+
+export default function PenguatkuasaanForm({
+  activeLocations = [],
+  onAddOperation,
+}) {
+  const [tarikh, setTarikh] = useState("");
+  const [locationId, setLocationId] = useState("");
+  const [kategoriKemalangan, setKategoriKemalangan] = useState("Maut");
+  const [jenisOperasi, setJenisOperasi] = useState("Pematuhan");
+  const [tangkapan, setTangkapan] = useState(0);
+  const [sita, setSita] = useState(0);
+  const [jamMula, setJamMula] = useState("");
+  const [jamAkhir, setJamAkhir] = useState("");
+  const [statusText, setStatusText] = useState(
+    "Status: Sedia untuk kemasukan rekod operasi baharu (simulasi)."
+  );
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!activeLocations.length) return;
+    const valid = activeLocations.some((l) => l.id === locationId);
+    if (!valid) {
+      setLocationId(activeLocations[0].id);
+    }
+  }, [activeLocations, locationId]);
+
+  const resetFields = () => {
+    setTarikh("");
+    if (activeLocations[0]) {
+      setLocationId(activeLocations[0].id);
+    }
+    setKategoriKemalangan("Maut");
+    setJenisOperasi("Pematuhan");
+    setTangkapan(0);
+    setSita(0);
+    setJamMula("");
+    setJamAkhir("");
+  };
+
+  const handleReset = () => {
+    resetFields();
+    setStatusText("Status: Borang dikosongkan.");
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      const selectedLoc = activeLocations.find((l) => l.id === locationId);
+      const savedTarikh = tarikh;
+
+      await onAddOperation({
+        tarikh: savedTarikh,
+        location_id: selectedLoc?.id || locationId,
+        location_name: selectedLoc?.name || "",
+        kategori_kemalangan: kategoriKemalangan,
+        jenis_operasi: jenisOperasi,
+        tangkapan: Math.max(0, parseInt(tangkapan, 10) || 0),
+        sita: Math.max(0, parseInt(sita, 10) || 0),
+        jam_mula: jamMula,
+        jam_akhir: jamAkhir,
+      });
+
+      resetFields();
+      setStatusText(
+        `Status: Rekod operasi pada ${savedTarikh} disimpan & dikemas kini pada Dashboard.`
+      );
+    } catch (err) {
+      setStatusText(`Ralat: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl p-5 max-[550px]:p-3.5 shadow-[0_7px_25px_#040a1630]">
+      <div className="flex items-center justify-between gap-2.5 mb-4">
+        <h2 className="text-[17px] font-bold m-0">
+          Borang Input Penguatkuasaan
+        </h2>
+        <Chip>Rekod Operasi</Chip>
+      </div>
+
+      <form
+        onSubmit={handleSubmit}
+        className="grid grid-cols-2 max-[550px]:grid-cols-1 gap-3.5"
+      >
+        {/* 1. Tarikh */}
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor="opTarikh"
+            className="text-xs text-[var(--color-text-label)] font-semibold"
+          >
+            1. Tarikh
+          </label>
+          <input
+            id="opTarikh"
+            type="date"
+            value={tarikh}
+            onChange={(e) => setTarikh(e.target.value)}
+            required
+            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+          />
+        </div>
+
+        {/* Lokasi Hotspot / Jalan */}
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor="opLokasi"
+            className="text-xs text-[var(--color-text-label)] font-semibold"
+          >
+            Lokasi Hotspot / Jalan
+          </label>
+          <select
+            id="opLokasi"
+            value={locationId}
+            onChange={(e) => setLocationId(e.target.value)}
+            required
+            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+          >
+            {activeLocations.map((loc) => (
+              <option key={loc.id} value={loc.id}>
+                {loc.name}
+                {loc.is_blackspot ? " ⚫" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* 2. Kategori Kemalangan */}
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor="opKategoriKemalangan"
+            className="text-xs text-[var(--color-text-label)] font-semibold"
+          >
+            2. Kategori Kemalangan
+          </label>
+          <select
+            id="opKategoriKemalangan"
+            value={kategoriKemalangan}
+            onChange={(e) => setKategoriKemalangan(e.target.value)}
+            required
+            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+          >
+            <option value="Maut">Maut</option>
+            <option value="Parah">Parah</option>
+            <option value="Ringan">Ringan</option>
+            <option value="Rosak sahaja">Rosak sahaja</option>
+            <option value="Bukan kemalangan">Bukan kemalangan</option>
+          </select>
+        </div>
+
+        {/* 3. Jenis Operasi */}
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor="opJenisOperasi"
+            className="text-xs text-[var(--color-text-label)] font-semibold"
+          >
+            3. Jenis Operasi
+          </label>
+          <select
+            id="opJenisOperasi"
+            value={jenisOperasi}
+            onChange={(e) => setJenisOperasi(e.target.value)}
+            required
+            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+          >
+            <option value="Pematuhan">Pematuhan</option>
+            <option value="Perdagangan">Perdagangan</option>
+            <option value="Motosikal">Motosikal</option>
+            <option value="Mabuk">Mabuk</option>
+            <option value="Bersepadu">Bersepadu</option>
+          </select>
+        </div>
+
+        {/* 4. Tangkapan */}
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor="opTangkapan"
+            className="text-xs text-[var(--color-text-label)] font-semibold"
+          >
+            4. Tangkapan
+          </label>
+          <input
+            id="opTangkapan"
+            type="number"
+            min="0"
+            inputMode="numeric"
+            value={tangkapan}
+            onChange={(e) => setTangkapan(e.target.value)}
+            required
+            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+          />
+        </div>
+
+        {/* 5. Sita */}
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor="opSita"
+            className="text-xs text-[var(--color-text-label)] font-semibold"
+          >
+            5. Sita
+          </label>
+          <input
+            id="opSita"
+            type="number"
+            min="0"
+            inputMode="numeric"
+            value={sita}
+            onChange={(e) => setSita(e.target.value)}
+            required
+            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+          />
+        </div>
+
+        {/* 6. Jam Mula (HH:MM) */}
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor="opJamMula"
+            className="text-xs text-[var(--color-text-label)] font-semibold"
+          >
+            6. Jam Mula (HH:MM)
+          </label>
+          <input
+            id="opJamMula"
+            type="time"
+            value={jamMula}
+            onChange={(e) => setJamMula(e.target.value)}
+            required
+            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+          />
+        </div>
+
+        {/* 7. Jam Akhir (HH:MM) */}
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor="opJamAkhir"
+            className="text-xs text-[var(--color-text-label)] font-semibold"
+          >
+            7. Jam Akhir (HH:MM)
+          </label>
+          <input
+            id="opJamAkhir"
+            type="time"
+            value={jamAkhir}
+            onChange={(e) => setJamAkhir(e.target.value)}
+            required
+            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+          />
+        </div>
+
+        {/* Actions */}
+        <div className="col-span-full mt-1">
+          <div className="flex gap-2.5 flex-wrap">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="cursor-pointer bg-[var(--color-accent)] text-[#0b1629] border border-[var(--color-accent)] font-bold px-4 py-2.5 rounded-[10px] text-sm hover:brightness-110 transition-all disabled:opacity-50"
+            >
+              {submitting ? "Menyimpan..." : "Simpan Rekod Penguatkuasaan"}
+            </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={submitting}
+              className="cursor-pointer border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-4 py-2.5 rounded-[10px] font-semibold text-sm hover:border-[var(--color-accent)] transition-colors disabled:opacity-50"
+            >
+              Kosongkan Borang
+            </button>
+          </div>
+          <p className="text-[var(--color-text-muted)] text-xs mt-2.5">
+            {statusText}
+          </p>
+        </div>
+      </form>
+    </div>
+  );
+}

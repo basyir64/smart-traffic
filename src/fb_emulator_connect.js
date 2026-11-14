@@ -1,15 +1,5 @@
-import { initializeApp } from "firebase/app";
-import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
-
-const firebaseConfig = {
-  projectId: "smart-traffic-93b67",
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-if (import.meta.env.DEV) {
-  connectFirestoreEmulator(db, "127.0.0.1", 8090);
-}
-
-export { db };
+/**
+ * Deprecated: All Firebase Auth & Firestore connections are consolidated in src/fb_cloud_firestore.js.
+ * Re-exported here for backwards compatibility.
+ */
+export { app, db, auth, dataSourceInfo } from "./fb_cloud_firestore";

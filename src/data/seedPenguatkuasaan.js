@@ -1,0 +1,103 @@
+/**
+ * Canonical Seed Enforcement Operations (Penguatkuasaan) for SMART TRAFFIC AI (PDRM BSPT)
+ * Distributed realistically across time windows (Weekly, Monthly, Quarterly in Q4 2026).
+ * Based on official Perak Tengah / Manjung corridor routes and registered hotspot locations.
+ */
+export const seedPenguatkuasaan = [
+  // ── Window 1: Weekly (Nov 8 – Nov 14, 2026) ──
+  {
+    id: "op-2026-00088",
+    tarikh: "2026-11-12",
+    location_id: "km31-jalan-ipoh-lumut",
+    location_name: "KM31 JALAN IPOH-LUMUT (L/ISYARAT SIDEC)",
+    kategori_kemalangan: "Maut",
+    jenis_operasi: "Pematuhan",
+    tangkapan: 3,
+    sita: 1,
+    jam_mula: "20:00",
+    jam_akhir: "23:30",
+    created_at: "2026-11-12T20:00:00Z",
+  },
+  // {
+  //   id: "op-2026-00087",
+  //   tarikh: "2026-11-10",
+  //   location_id: "km1-jalan-bota-kanan-teluk-intan",
+  //   location_name: "KM1 JALAN BOTA KANAN-TELUK INTAN (PEKAN BOTA)",
+  //   kategori_kemalangan: "Ringan",
+  //   jenis_operasi: "Bersepadu",
+  //   tangkapan: 2,
+  //   sita: 0,
+  //   jam_mula: "21:00",
+  //   jam_akhir: "01:00",
+  //   created_at: "2026-11-10T21:00:00Z",
+  // },
+
+  // // ── Window 2: Monthly (Nov 1 – Nov 7, 2026) ──
+  // {
+  //   id: "op-2026-00084",
+  //   tarikh: "2026-11-05",
+  //   location_id: "km30-jalan-ipoh-lumut",
+  //   location_name: "KM30 JALAN IPOH-LUMUT (L/ISYARAT BDR UNIVERSITI)",
+  //   kategori_kemalangan: "Parah",
+  //   jenis_operasi: "Motosikal",
+  //   tangkapan: 5,
+  //   sita: 2,
+  //   jam_mula: "16:30",
+  //   jam_akhir: "19:30",
+  //   created_at: "2026-11-05T16:30:00Z",
+  // },
+  // {
+  //   id: "op-2026-00082",
+  //   tarikh: "2026-11-03",
+  //   location_id: "km14-jalan-sitiawan",
+  //   location_name: "KM14 JALAN SITIAWAN-LUMUT (SIMPANG EMPAT)",
+  //   kategori_kemalangan: "Maut",
+  //   jenis_operasi: "Mabuk",
+  //   tangkapan: 4,
+  //   sita: 1,
+  //   jam_mula: "22:00",
+  //   jam_akhir: "02:00",
+  //   created_at: "2026-11-03T22:00:00Z",
+  // },
+
+  // // ── Window 3: Quarterly (October 2026) ──
+  // {
+  //   id: "op-2026-00078",
+  //   tarikh: "2026-10-27",
+  //   location_id: "km31-jalan-ipoh-lumut",
+  //   location_name: "KM31 JALAN IPOH-LUMUT (L/ISYARAT SIDEC)",
+  //   kategori_kemalangan: "Maut",
+  //   jenis_operasi: "Pematuhan",
+  //   tangkapan: 4,
+  //   sita: 0,
+  //   jam_mula: "08:00",
+  //   jam_akhir: "11:30",
+  //   created_at: "2026-10-27T08:00:00Z",
+  // },
+  // {
+  //   id: "op-2026-00072",
+  //   tarikh: "2026-10-18",
+  //   location_id: "km30-jalan-ipoh-lumut",
+  //   location_name: "KM30 JALAN IPOH-LUMUT (L/ISYARAT BDR UNIVERSITI)",
+  //   kategori_kemalangan: "Parah",
+  //   jenis_operasi: "Perdagangan",
+  //   tangkapan: 1,
+  //   sita: 0,
+  //   jam_mula: "14:00",
+  //   jam_akhir: "17:00",
+  //   created_at: "2026-10-18T14:00:00Z",
+  // },
+  // {
+  //   id: "op-2026-00069",
+  //   tarikh: "2026-10-11",
+  //   location_id: "persimpangan-seri-manjung",
+  //   location_name: "PERSIMPANGAN UTAMA SERI MANJUNG",
+  //   kategori_kemalangan: "Parah",
+  //   jenis_operasi: "Bersepadu",
+  //   tangkapan: 6,
+  //   sita: 3,
+  //   jam_mula: "20:30",
+  //   jam_akhir: "23:30",
+  //   created_at: "2026-10-11T20:30:00Z",
+  // },
+];

@@ -1,16 +1,94 @@
-import { useTranslation } from "react-i18next";
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "../auth-context";
+import { useLocations } from "../hooks/useLocations";
+import { useSiasatan } from "../hooks/useSiasatan";
+import SiasatanForm from "../components/siasatan/SiasatanForm";
+import SiasatanAggregation from "../components/siasatan/SiasatanAggregation";
+import SiasatanTable from "../components/siasatan/SiasatanTable";
+import FactorBars from "../components/charts/FactorBars";
 
 export default function Siasatan() {
-  const { t } = useTranslation();
+  const { role, canModifySiasatan } = useAuth();
+  const { activeLocations } = useLocations();
+  const {
+    pageRecords,
+    totalCount,
+    currentPage,
+    sortOrder,
+    loadingPage,
+    loadPage,
+    toggleSortOrder,
+    countAllSiasatan,
+    loadSummaryMetrics,
+    loadElementSubItems,
+    addSiasatan,
+    updateSiasatan,
+  } = useSiasatan();
+
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Load only Page 1 (5 newest records) on initial mount
+  useEffect(() => {
+    loadPage(1);
+  }, [loadPage]);
+
+  const handleAddRecord = useCallback(
+    async (payload) => {
+      const created = await addSiasatan(payload);
+      setRefreshKey((k) => k + 1);
+      return created;
+    },
+    [addSiasatan]
+  );
+
+  const handleUpdateRecord = useCallback(
+    async (id, payload) => {
+      const updated = await updateSiasatan(id, payload);
+      setRefreshKey((k) => k + 1);
+      return updated;
+    },
+    [updateSiasatan]
+  );
 
   return (
-    <div>
-      <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl p-6 text-center">
-        <h2 className="text-lg font-bold mb-2">{t("nav.siasatan")}</h2>
-        <p className="text-[var(--color-text-secondary)] text-sm">
-          {t("coming_soon")} — Phase 3
-        </p>
-      </div>
+    <div className="space-y-4 mt-4">
+      {canModifySiasatan ? (
+        <SiasatanForm
+          activeLocations={activeLocations}
+          onAddRecord={handleAddRecord}
+        />
+      ) : (
+        <div className="border border-[var(--color-accent)] bg-[#242a3a] text-[#f3d79b] rounded-xl p-4 text-xs leading-relaxed">
+          🔒 <b>Mod Paparan Sahaja ({role})</b>: Anda mempunyai akses melihat
+          rekod siasatan, tetapi pendaftaran dan pengemaskinian rekod hanya
+          boleh dilakukan oleh Pegawai Siasatan atau Admin.
+        </div>
+      )}
+
+      <SiasatanAggregation
+        loadSummaryMetrics={loadSummaryMetrics}
+        loadElementSubItems={loadElementSubItems}
+        refreshKey={refreshKey}
+      />
+
+      <SiasatanTable
+        records={pageRecords}
+        totalCount={totalCount}
+        currentPage={currentPage}
+        sortOrder={sortOrder}
+        loading={loadingPage}
+        canEdit={canModifySiasatan}
+        activeLocations={activeLocations}
+        onPageChange={(nextPage) => loadPage(nextPage)}
+        onToggleSort={toggleSortOrder}
+        onUpdateRecord={handleUpdateRecord}
+      />
+
+      <FactorBars
+        countAllSiasatan={countAllSiasatan}
+        totalCount={totalCount}
+        refreshKey={refreshKey}
+      />
     </div>
   );
 }

@@ -13,7 +13,8 @@ const resources = {
       // Tabs
       "nav.dashboard": "Dashboard Utama",
       "nav.siasatan": "Siasatan",
-      "nav.analysis": "9 Elemen IPRS",
+      "nav.penguatkuasaan": "Penguatkuasaan",
+      "nav.lokasi": "Lokasi",
 
       // Period selector
       "period.weekly": "Mingguan",
@@ -44,7 +45,7 @@ const resources = {
 
       // Risk
       "risk.title": "Risiko Lokasi Pilihan",
-      "risk.chip": "AI Advisory",
+      "risk.chip": "Nasihat AI",
       "risk.high": "RISIKO TINGGI",
       "risk.medium": "RISIKO SEDERHANA",
       "risk.time": "Waktu risiko",
@@ -70,65 +71,15 @@ const resources = {
 
       // Placeholder pages
       "coming_soon": "Akan datang",
-    },
-  },
-  en: {
-    translation: {
-      "brand.eyebrow": "PDRM · BSPT · IPD INNOVATION",
-      "brand.title": "SMART TRAFFIC AI",
-      "brand.subtitle": "Command & Accident Prevention Dashboard · Interactive Prototype",
-      "brand.demo": "● SIMULATED DATA — NOT ACTUAL IPRS",
 
-      "nav.dashboard": "Main Dashboard",
-      "nav.siasatan": "Investigation",
-      "nav.analysis": "9 IPRS Elements",
-
-      "period.weekly": "Weekly",
-      "period.monthly": "Monthly",
-      "period.quarterly": "Quarterly",
-
-      "export.csv": "↓ Export CSV",
-
-      "metric.cases": "Total Accidents",
-      "metric.cases.sub": "All case categories",
-      "metric.fatal": "Fatal Accidents",
-      "metric.fatal.sub": "Fatal status cases",
-      "metric.deaths": "Total Deaths",
-      "metric.deaths.sub": "Total persons killed",
-      "metric.change": "Case Change",
-      "metric.change.sub": "Compared to previous period (simulated)",
-
-      "trend.title": "Accident Trend by Week",
-      "trend.weekly": "Current Week",
-      "trend.monthly": "Current Month",
-      "trend.quarterly": "Current Quarter",
-      "trend.label.weekly": "Day",
-      "trend.label.monthly": "Week",
-      "trend.label.quarterly": "Month",
-
-      "risk.title": "Selected Location Risk",
-      "risk.chip": "AI Advisory",
-      "risk.high": "HIGH RISK",
-      "risk.medium": "MEDIUM RISK",
-      "risk.time": "Risk time",
-      "risk.cases": "sample cases",
-      "risk.factor": "Factor",
-      "risk.recommendation": "Recommendation",
-      "risk.generate": "Generate Operations Plan",
-
-      "map.title": "Schematic Hotspot Map",
-      "map.chip": "Click location markers",
-      "map.high": "High risk",
-      "map.mediumHigh": "Medium-high risk",
-      "map.medium": "Medium risk",
-      "map.disclaimer": "Not an actual geographic map",
-
-      "hotspot.title": "Priority Hotspots",
-      "hotspot.chip": "Sorted by risk",
-
-      "footer.text": "CONCEPT PROTOTYPE · All figures, road names, hotspot locations and scores in this dashboard are designed for demonstration only. No direct IPRS connection, no victim data, and no actual AI predictions.",
-
-      "coming_soon": "Coming soon",
+      // Auth
+      "auth.loginTitle": "Log Masuk Pegawai",
+      "auth.loginSubtitle": "Khas untuk Pegawai BSPT / PDRM yang mempunyai kelayakan akses.",
+      "auth.username": "Nama Pengguna (Username)",
+      "auth.password": "Kata Laluan",
+      "auth.loginBtn": "Log Masuk",
+      "auth.logoutBtn": "Log Keluar",
+      "auth.backToDashboard": "Kembali ke Dashboard Utama (Mod Awam)",
     },
   },
 };

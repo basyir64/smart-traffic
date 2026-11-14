@@ -1,36 +1,83 @@
-rules_version='2'
+rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Locations — read-only for authenticated users
+    // ── Helper Functions ──
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function hasUserProfile() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return hasUserProfile() && getUserData().role == role && getUserData().active == true;
+    }
+
+    // ── Users Collection (RBAC Profiles) ──
+    // Read: Allowed for startup count check, username lookup, own profile, or Admin
+    // Write: Canonical seed-* docs when missing, self-registration via onboard script / initial login sync, or Admin
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update: if userId.matches('^seed-.*')
+        || (isSignedIn() && request.auth.uid == userId)
+        || hasRole('Admin');
+      allow delete: if hasRole('Admin');
+    }
+
+    // ── Locations & Blackspots Collection ──
+    // Read: Public (Dashboard Utama & dropdowns)
+    // Write: Strictly Admin only, except initial bootstrap when canonical seed location does not exist yet
     match /locations/{locationId} {
       allow read: if true;
-      allow write: if false;
+      allow create: if !exists(/databases/$(database)/documents/locations/km31-jalan-ipoh-lumut)
+        || hasRole('Admin');
+      allow update, delete: if hasRole('Admin');
     }
 
-    // Period stats — read-only for authenticated users
+    // ── Period Baselines Collection ──
+    // Read: Public (Dashboard Utama)
+    // Write: Admin or initial seed when baseline doc does not exist
     match /periods/{periodId} {
       allow read: if true;
-      allow write: if false;
+      allow create: if !exists(/databases/$(database)/documents/periods/$(periodId))
+        || hasRole('Admin');
+      allow update, delete: if hasRole('Admin');
     }
 
-    // Siasatan records — read for all, write for authenticated
+    // ── Siasatan Collection (Investigation Records) ──
+    // Read: Public (for Dashboard Utama & Siasatan views)
+    // Write: 'Siasatan' or 'Admin' role, plus initial canonical smn-2026-* seed docs when missing
     match /siasatan/{siasatanId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow create: if (siasatanId.matches('^smn-2026-[0-9]+$') && !exists(/databases/$(database)/documents/siasatan/$(siasatanId)))
+        || hasRole('Siasatan')
+        || hasRole('Admin');
+      allow update, delete: if hasRole('Siasatan') || hasRole('Admin');
     }
 
-    // Contributing factors — read-only
+    // ── Penguatkuasaan Collection (Enforcement Operations) ──
+    // Read: Public (for Dashboard Utama & Penguatkuasaan views)
+    // Write: 'Penguatkuasaan' or 'Admin' role, plus initial canonical op-2026-* seed docs when missing
+    match /penguatkuasaan/{opId} {
+      allow read: if true;
+      allow create: if (opId.matches('^op-2026-[0-9]+$') && !exists(/databases/$(database)/documents/penguatkuasaan/$(opId)))
+        || hasRole('Penguatkuasaan')
+        || hasRole('Admin');
+      allow update, delete: if hasRole('Penguatkuasaan') || hasRole('Admin');
+    }
+
+    // ── Contributing Factors Collection ──
     match /factors/{factorId} {
       allow read: if true;
-      allow write: if false;
-    }
-
-    // TODO: Replace with proper role-based rules when auth is added
-    // Temporary fallback — remove before production
-    match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2026, 12, 12);
+      allow write: if hasRole('Admin');
     }
   }
 }
