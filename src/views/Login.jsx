@@ -136,11 +136,11 @@ export default function Login() {
                   key={seed.username}
                   type="button"
                   disabled={loading}
-                  title={`${seed.name} (${seed.username} / ${seed.password})`}
+                  title={`${seed.name} (${seed.username})`}
                   onClick={() => handleQuickRole(seed.role)}
                   className="cursor-pointer border border-[var(--color-border-light)] bg-[var(--color-nav-bg)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
                 >
-                  {seed.role}
+                  {seed.role} ({seed.username})
                 </button>
               ))}
             </div>

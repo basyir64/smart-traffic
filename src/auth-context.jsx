@@ -15,7 +15,7 @@ import {
   getDocs,
   serverTimestamp,
 } from "firebase/firestore";
-import { auth, db } from "./fb_cloud_firestore";
+import { auth, db, dataSourceInfo } from "./fb_cloud_firestore";
 import { seedUsers } from "./data/seedUsers";
 import { bootstrapFirestoreData } from "./services/bootstrapData";
 
@@ -140,25 +140,25 @@ export function AuthProvider({ children }) {
       setUser(profile);
       return profile;
     } catch (err) {
-      // If a canonical seed user is not yet populated in Firebase Auth/Firestore, seed them on login
+      // In Emulator mode only: if a canonical seed user is not yet in Auth Emulator, provision on first login
       const isUserMissingError =
         err.code === "auth/user-not-found" ||
         err.code === "auth/invalid-credential" ||
         err.code === "auth/invalid-login-credentials";
 
-      if (
-        matchedSeed &&
-        matchedSeed.password === password &&
-        isUserMissingError
-      ) {
-        const createdCred = await createUserWithEmailAndPassword(
-          auth,
-          email,
-          password
-        );
-        const profile = await resolveUserProfile(createdCred.user);
-        setUser(profile);
-        return profile;
+      if (dataSourceInfo.isEmulator && matchedSeed && isUserMissingError) {
+        try {
+          const createdCred = await createUserWithEmailAndPassword(
+            auth,
+            email,
+            password
+          );
+          const profile = await resolveUserProfile(createdCred.user);
+          setUser(profile);
+          return profile;
+        } catch {
+          // User already exists in Auth Emulator with a different password
+        }
       }
 
       throw new Error(
@@ -182,7 +182,7 @@ export function AuthProvider({ children }) {
       if (!matchedSeed) {
         throw new Error(`Tiada akaun seed untuk peranan: ${targetRole}`);
       }
-      return login(matchedSeed.username, matchedSeed.password);
+      return login(matchedSeed.username, "EmulatorTest123!");
     },
     [login, logout]
   );

@@ -13,6 +13,9 @@
  *   node scripts/onboard-user.mjs --seed-all
  */
 
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
@@ -32,6 +35,33 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { seedUsers } from "../src/data/seedUsers.js";
+
+// Load .env.local into process.env if present
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const envLocalPath = path.resolve(__dirname, "../.env.local");
+if (fs.existsSync(envLocalPath)) {
+  const lines = fs.readFileSync(envLocalPath, "utf8").split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eqIdx = trimmed.indexOf("=");
+    if (eqIdx === -1) continue;
+    const key = trimmed.slice(0, eqIdx).trim();
+    const val = trimmed
+      .slice(eqIdx + 1)
+      .trim()
+      .replace(/^(['"])(.*)\1$/, "$2");
+    if (key && process.env[key] === undefined) {
+      process.env[key] = val;
+    }
+  }
+}
+
+function getSeedPassword(username) {
+  if (!username) return null;
+  const envKey = `SEED_PASSWORD_${String(username).toUpperCase()}`;
+  return process.env[envKey] || null;
+}
 
 // Default / fallback Firebase config (works with emulator & cloud project)
 const firebaseConfig = {
@@ -274,10 +304,11 @@ async function main() {
     );
 
     for (const seed of seedUsers) {
+      const envPassword = getSeedPassword(seed.username);
       const res = await onboardUser({
         fullName: seed.name,
         role: seed.role,
-        customPassword: seed.password,
+        customPassword: envPassword,
         preferredUsername: seed.username,
       });
       printUserCard(res);
@@ -320,7 +351,8 @@ Contoh:
     const res = await onboardUser({
       fullName: name,
       role,
-      customPassword: password || matchedSeed?.password || null,
+      customPassword:
+        password || getSeedPassword(matchedSeed?.username) || null,
       preferredUsername: matchedSeed?.username || null,
     });
     printUserCard(res);
