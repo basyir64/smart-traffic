@@ -1,6 +1,10 @@
 import { useState, useMemo } from "react";
 import { SIASATAN_PAGE_SIZE } from "../../hooks/useSiasatan";
 import Chip from "../shared/Chip";
+import {
+  useRegisterUnsavedForm,
+  isFormStateDirty,
+} from "../../hooks/useUnsavedChanges";
 
 export default function SiasatanTable({
   records = [],
@@ -17,8 +21,23 @@ export default function SiasatanTable({
 }) {
   const [editingRecord, setEditingRecord] = useState(null);
   const [formState, setFormState] = useState(null);
+  const [initialFormState, setInitialFormState] = useState(null);
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState("");
+
+  const isEditModalDirty = useMemo(
+    () =>
+      Boolean(
+        editingRecord && isFormStateDirty(initialFormState, formState)
+      ),
+    [editingRecord, initialFormState, formState]
+  );
+
+  useRegisterUnsavedForm(
+    "siasatan-edit-modal",
+    isEditModalDirty,
+    "Kemaskini Rekod Siasatan"
+  );
 
   const locationPool = useMemo(
     () => (allLocations.length ? allLocations : activeLocations),
@@ -56,7 +75,7 @@ export default function SiasatanTable({
     if (!canEdit) return;
     setModalError("");
     setEditingRecord(rec);
-    setFormState({
+    const snapshot = {
       no_saman: rec.no_saman || "",
       no_kenderaan: rec.no_kenderaan || "",
       no_ic: rec.no_ic ?? "",
@@ -74,13 +93,16 @@ export default function SiasatanTable({
       jenis_binatang: rec.jenis_binatang || "Kerbau",
       jenis_kemalangan: rec.jenis_kemalangan || "Rosak sahaja",
       bilangan_maut: rec.bilangan_maut > 0 ? rec.bilangan_maut : 1,
-    });
+    };
+    setInitialFormState(snapshot);
+    setFormState(snapshot);
   };
 
   const closeEditModal = () => {
     if (saving) return;
     setEditingRecord(null);
     setFormState(null);
+    setInitialFormState(null);
     setModalError("");
   };
 
@@ -145,6 +167,7 @@ export default function SiasatanTable({
 
       setEditingRecord(null);
       setFormState(null);
+      setInitialFormState(null);
     } catch (err) {
       setModalError(err.message || "Gagal mengemas kini rekod siasatan.");
     } finally {

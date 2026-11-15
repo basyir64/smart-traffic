@@ -1,6 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { LOKASI_PAGE_SIZE } from "../../hooks/useLocations";
 import Chip from "../shared/Chip";
+import {
+  useRegisterUnsavedForm,
+  isFormStateDirty,
+} from "../../hooks/useUnsavedChanges";
 
 export default function LokasiTable({
   locations = [],
@@ -18,8 +22,21 @@ export default function LokasiTable({
   const [errorMsg, setErrorMsg] = useState("");
   const [editingLoc, setEditingLoc] = useState(null);
   const [formState, setFormState] = useState(null);
+  const [initialFormState, setInitialFormState] = useState(null);
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState("");
+
+  const isEditModalDirty = useMemo(
+    () =>
+      Boolean(editingLoc && isFormStateDirty(initialFormState, formState)),
+    [editingLoc, initialFormState, formState]
+  );
+
+  useRegisterUnsavedForm(
+    "lokasi-edit-modal",
+    isEditModalDirty,
+    "Kemaskini Lokasi"
+  );
 
   const startIndex = (currentPage - 1) * LOKASI_PAGE_SIZE;
 
@@ -51,7 +68,7 @@ export default function LokasiTable({
     if (!canEdit) return;
     setModalError("");
     setEditingLoc(loc);
-    setFormState({
+    const snapshot = {
       route: loc.route || loc.name || "",
       km: loc.km || "",
       landmark: loc.landmark || "",
@@ -61,13 +78,16 @@ export default function LokasiTable({
       active: Boolean(loc.active),
       lat: loc.geo?.lat ?? "",
       lng: loc.geo?.lng ?? "",
-    });
+    };
+    setInitialFormState(snapshot);
+    setFormState(snapshot);
   };
 
   const closeEditModal = () => {
     if (saving) return;
     setEditingLoc(null);
     setFormState(null);
+    setInitialFormState(null);
     setModalError("");
   };
 
@@ -81,6 +101,7 @@ export default function LokasiTable({
       await onUpdateLocation(editingLoc.id, formState);
       setEditingLoc(null);
       setFormState(null);
+      setInitialFormState(null);
     } catch (err) {
       setModalError(err.message || "Gagal mengemas kini lokasi.");
     } finally {

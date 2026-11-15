@@ -1,5 +1,6 @@
-import { useState, useEffect, useId } from "react";
+import { useState, useEffect, useId, useMemo } from "react";
 import Chip from "../shared/Chip";
+import { useRegisterUnsavedForm } from "../../hooks/useUnsavedChanges";
 
 const DEFAULT_CARD_STATUS =
   "Status: Sedia untuk pendaftaran lokasi baharu. Lokasi aktif akan dipaparkan dalam pilihan Siasatan & Penguatkuasaan.";
@@ -40,6 +41,40 @@ export default function LokasiForm({
   );
 
   const isDisabled = disabled || submitting;
+
+  const isDirty = useMemo(() => {
+    if (disabled) return false;
+    return (
+      route !== "" ||
+      km !== "" ||
+      landmark !== "" ||
+      roadType !== "Persekutuan" ||
+      isBlackspot !== true ||
+      source !== "LAMPIRAN BLACKSPOT" ||
+      active !== true ||
+      lat !== "" ||
+      lng !== ""
+    );
+  }, [
+    disabled,
+    route,
+    km,
+    landmark,
+    roadType,
+    isBlackspot,
+    source,
+    active,
+    lat,
+    lng,
+  ]);
+
+  useRegisterUnsavedForm(
+    isModal ? "siasatan-lokasi-modal" : "lokasi-form",
+    isDirty,
+    isModal
+      ? "Borang Daftar Lokasi (Modal Siasatan)"
+      : "Borang Daftar Lokasi & Lampiran Blackspot"
+  );
 
   useEffect(() => {
     if (!isModal || !onCancel) return;

@@ -700,7 +700,7 @@ To be prioritized and implemented after the conclusion of the First Round of UAT
 > Tracks new and changing operational requirements discovered during UAT 1.
 > Each phase below is specified for direct consumption by implementing agents. **Do not begin implementation until reviewed and approved by the project owner.**
 
-#### UAT 2 · Phase 1 — Inline Location Registration in Siasatan & Batch Saman Input in Penguatkuasaan ⏳ PENDING REVIEW
+#### UAT 2 · Phase 1 — Inline Location Registration in Siasatan & Batch Saman Input in Penguatkuasaan ✅ COMPLETED (2026-11-15)
 
 ##### 1. Reusable `LokasiForm` Component & Siasatan Inline Location Creation + Dynamic Read-Only Location Fields
 1. **Abstract & Reuse `LokasiForm` (`src/components/locations/LokasiForm.jsx`)**:
@@ -800,6 +800,39 @@ To be prioritized and implemented after the conclusion of the First Round of UAT
 - Verify `PenguatkuasaanForm` and `PenguatkuasaanTable`:
   - Field numbering is strictly `1`–`9` (including `2. Lokasi Hotspot / Jalan` and `9. Saman`).
   - Batch `+ Tambah Saman`, row removal, CSV import (`no, nombor_saman`) with Replace/Append confirmation on non-empty rows, optional empty submission, and table/edit modal persistence all work end-to-end.
+
+#### UAT 2 · Phase 2 — Navigation & Form Safety Enhancements ⏳ PENDING REVIEW
+
+##### 1. Unsaved Form Data Loss Warning on Tab Switch & Navigation
+1. **Data Router Migration (`src/index.jsx`)**:
+   - Upgrade React Router setup from declarative `<BrowserRouter basename="/smart-traffic">` to `createBrowserRouter(..., { basename: "/smart-traffic" })` + `<RouterProvider>` so native SPA navigation blocking (`useBlocker`) works uniformly across `<NavLink>` tab clicks, `<Link>` navigation (`[Log Masuk]`), programmatic `navigate()`, and browser **Back / Forward** history navigation.
+   - Retain `SpaRedirectHandler` inside the root layout route (`Layout.jsx`) so GitHub Pages `?redirect=...` deep linking works identically.
+2. **Unsaved Changes Registry & Hook (`src/unsaved-changes-context.jsx`, `src/hooks/useUnsavedChanges.js`)**:
+   - Provide `UnsavedChangesProvider` wrapping the root layout route in `src/index.jsx`.
+   - Track active dirty forms/modals by unique ID & Bahasa Melayu label (`setFormDirty(id, isDirty, label)`), clearing automatically on unmount, on `Kosongkan Borang`, or after successful Save/Submit.
+   - Provide `useRegisterUnsavedForm(id, isDirty, label)` for forms/modals and shared `isFormStateDirty(initialState, currentState)` comparison helper for modal edit forms.
+   - Expose `clearAllDirtyAndBypass()` / `resetBypass()` so confirmed `[Log Keluar]` actions can sign out and redirect to `/` cleanly without being double-blocked by `ProtectedRoute`.
+3. **All Tracked Forms & Modals**:
+   - Track **all 3 inline creation forms**:
+     - `SiasatanForm` (`"siasatan-form"` — *Borang Input Data Siasatan*)
+     - `PenguatkuasaanForm` (`"penguatkuasaan-form"` — *Borang Input Penguatkuasaan*)
+     - `LokasiForm` (`"lokasi-form"` — *Borang Daftar Lokasi & Lampiran Blackspot*, when not disabled)
+   - Track **all open & edited modals**:
+     - `LokasiForm` modal inside `SiasatanForm` (`"siasatan-lokasi-modal"` — *Borang Daftar Lokasi (Modal Siasatan)*)
+     - `SiasatanTable` Edit Modal (`"siasatan-edit-modal"` — *Kemaskini Rekod Siasatan*)
+     - `PenguatkuasaanTable` Edit Modal (`"penguatkuasaan-edit-modal"` — *Kemaskini Rekod Penguatkuasaan*)
+     - `LokasiTable` Edit Modal (`"lokasi-edit-modal"` — *Kemaskini Lokasi*)
+4. **Navigation Interception & Styled Bahasa Melayu Warning Modal (`src/views/Layout.jsx`, `src/components/shared/UnsavedChangesModal.jsx`)**:
+   - Guard **tab switches, `[Log Masuk]` / `[Log Keluar]`, Browser Back/Forward (`useBlocker`)** (ignoring same-route clicks where `currentLocation.pathname === nextLocation.pathname`), plus **browser tab close / reload (`useBeforeUnload`)**.
+   - On blocked navigation or `[Log Keluar]` with unsaved changes, present a styled dark-theme Bahasa Melayu confirmation modal (`UnsavedChangesModal`, rendered above other modals at `z-[70]`) listing affected form(s) and offering two clear actions:
+     - **`Kekal di Halaman Ini`** *(stays on current page and preserves all form edits; also triggered by `Escape` or backdrop click)*.
+     - **`Teruskan & Buang Perubahan`** *(discards unsaved edits and completes the pending tab switch / Back-Forward / `[Log Keluar]` action)*.
+
+##### 2. Verification Checklist (for Implementing Agent)
+- Confirm ESLint passes with zero errors/warnings on all created/modified files and `npm run build` succeeds.
+- Verify modifying any field on `SiasatanForm`, `PenguatkuasaanForm`, or `LokasiForm` warns on switching tabs, clicking `[Log Keluar]`, Browser Back/Forward, and browser reload (`beforeunload`).
+- Verify `Kekal di Halaman Ini` preserves typed inputs and user session; `Teruskan & Buang Perubahan` completes navigation/logout without double-prompting.
+- Verify submitting a form or clicking `Kosongkan Borang` clears the dirty flag so subsequent navigation proceeds without warning.
 
 ---
 

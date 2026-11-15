@@ -2,6 +2,10 @@ import { useState, useMemo } from "react";
 import { PENGUATKUASAAN_PAGE_SIZE } from "../../hooks/usePenguatkuasaan";
 import Chip from "../shared/Chip";
 import SamanBatchInput from "./SamanBatchInput";
+import {
+  useRegisterUnsavedForm,
+  isFormStateDirty,
+} from "../../hooks/useUnsavedChanges";
 
 export default function PenguatkuasaanTable({
   operations = [],
@@ -18,8 +22,21 @@ export default function PenguatkuasaanTable({
 }) {
   const [editingOp, setEditingOp] = useState(null);
   const [formState, setFormState] = useState(null);
+  const [initialFormState, setInitialFormState] = useState(null);
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState("");
+
+  const isEditModalDirty = useMemo(
+    () =>
+      Boolean(editingOp && isFormStateDirty(initialFormState, formState)),
+    [editingOp, initialFormState, formState]
+  );
+
+  useRegisterUnsavedForm(
+    "penguatkuasaan-edit-modal",
+    isEditModalDirty,
+    "Kemaskini Rekod Penguatkuasaan"
+  );
 
   const locationPool = useMemo(
     () => (allLocations.length ? allLocations : activeLocations),
@@ -60,7 +77,8 @@ export default function PenguatkuasaanTable({
     if (!canEdit) return;
     setModalError("");
     setEditingOp(op);
-    setFormState({
+    const samanRows = op.saman_list?.length ? [...op.saman_list] : [""];
+    const snapshot = {
       tarikh: op.tarikh || "",
       location_id: op.location_id || activeLocations[0]?.id || "",
       location_name: op.location_name || activeLocations[0]?.name || "",
@@ -70,14 +88,17 @@ export default function PenguatkuasaanTable({
       sita: op.sita ?? 0,
       jam_mula: op.jam_mula || "20:00",
       jam_akhir: op.jam_akhir || "23:00",
-      saman_rows: op.saman_list?.length ? [...op.saman_list] : [""],
-    });
+      saman_rows: samanRows,
+    };
+    setInitialFormState(snapshot);
+    setFormState({ ...snapshot, saman_rows: [...samanRows] });
   };
 
   const closeEditModal = () => {
     if (saving) return;
     setEditingOp(null);
     setFormState(null);
+    setInitialFormState(null);
     setModalError("");
   };
 
@@ -110,6 +131,7 @@ export default function PenguatkuasaanTable({
 
       setEditingOp(null);
       setFormState(null);
+      setInitialFormState(null);
     } catch (err) {
       setModalError(err.message || "Gagal mengemas kini rekod operasi.");
     } finally {

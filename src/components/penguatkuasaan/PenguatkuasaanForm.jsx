@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import Chip from "../shared/Chip";
 import SamanBatchInput from "./SamanBatchInput";
+import { useRegisterUnsavedForm } from "../../hooks/useUnsavedChanges";
 
 export default function PenguatkuasaanForm({
   activeLocations = [],
@@ -27,6 +28,39 @@ export default function PenguatkuasaanForm({
     }
     return activeLocations[0]?.id || "";
   }, [activeLocations, locationId]);
+
+  const defaultLocationId = activeLocations[0]?.id || "";
+  const isDirty = useMemo(
+    () =>
+      tarikh !== "" ||
+      effectiveLocationId !== defaultLocationId ||
+      kategoriKemalangan !== "Maut" ||
+      jenisOperasi !== "Pematuhan" ||
+      String(tangkapan) !== "0" ||
+      String(sita) !== "0" ||
+      jamMula !== "" ||
+      jamAkhir !== "" ||
+      samanRows.length !== 1 ||
+      samanRows[0] !== "",
+    [
+      tarikh,
+      effectiveLocationId,
+      defaultLocationId,
+      kategoriKemalangan,
+      jenisOperasi,
+      tangkapan,
+      sita,
+      jamMula,
+      jamAkhir,
+      samanRows,
+    ]
+  );
+
+  useRegisterUnsavedForm(
+    "penguatkuasaan-form",
+    isDirty,
+    "Borang Input Penguatkuasaan"
+  );
 
   const resetFields = () => {
     setTarikh("");

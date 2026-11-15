@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import Chip from "../shared/Chip";
 import LokasiForm from "../locations/LokasiForm";
+import { useRegisterUnsavedForm } from "../../hooks/useUnsavedChanges";
 
 export default function SiasatanForm({
   activeLocations = [],
@@ -39,6 +40,46 @@ export default function SiasatanForm({
     () => activeLocations.find((l) => l.id === effectiveLocationId) || null,
     [activeLocations, effectiveLocationId]
   );
+
+  const defaultLocationId = activeLocations[0]?.id || "";
+  const isDirty = useMemo(
+    () =>
+      noSaman !== "" ||
+      noKenderaan !== "" ||
+      noIc !== "" ||
+      nama !== "" ||
+      umur !== "" ||
+      alamat !== "" ||
+      effectiveLocationId !== defaultLocationId ||
+      tarikhKemalangan !== "" ||
+      waktuKejadian !== "" ||
+      kategoriKenderaan !== "Motosikal" ||
+      kesalahan !== "Kelajuan" ||
+      melibatkanBinatang !== false ||
+      jenisBinatang !== "Kerbau" ||
+      jenisKemalangan !== "Rosak sahaja" ||
+      String(bilanganMaut) !== "1",
+    [
+      noSaman,
+      noKenderaan,
+      noIc,
+      nama,
+      umur,
+      alamat,
+      effectiveLocationId,
+      defaultLocationId,
+      tarikhKemalangan,
+      waktuKejadian,
+      kategoriKenderaan,
+      kesalahan,
+      melibatkanBinatang,
+      jenisBinatang,
+      jenisKemalangan,
+      bilanganMaut,
+    ]
+  );
+
+  useRegisterUnsavedForm("siasatan-form", isDirty, "Borang Input Data Siasatan");
 
   const handleKesalahanChange = (newKesalahan) => {
     setKesalahan(newKesalahan);

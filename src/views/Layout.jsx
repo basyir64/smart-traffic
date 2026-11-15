@@ -1,8 +1,18 @@
-import { useEffect } from "react";
-import { Outlet, NavLink, Link, useLocation, useNavigate } from "react-router";
+import { useState, useEffect, useCallback } from "react";
+import {
+  Outlet,
+  NavLink,
+  Link,
+  useLocation,
+  useNavigate,
+  useBlocker,
+  useBeforeUnload,
+} from "react-router";
 import { useTranslation } from "react-i18next";
 import { usePeriod } from "../period-context";
 import { useAuth } from "../auth-context";
+import { useUnsavedChanges } from "../hooks/useUnsavedChanges";
+import UnsavedChangesModal from "../components/shared/UnsavedChangesModal";
 import { dataSourceInfo } from "../fb_cloud_firestore";
 import { bootstrapFirestoreData } from "../services/bootstrapData";
 import {
@@ -41,6 +51,45 @@ export default function Layout() {
   const { loadByPeriod: loadOpsByPeriod } = usePenguatkuasaan();
   const location = useLocation();
   const navigate = useNavigate();
+  const {
+    hasUnsavedChanges,
+    dirtyFormLabels,
+    clearAllDirtyAndBypass,
+    resetBypass,
+    shouldBlockNavigation,
+  } = useUnsavedChanges();
+
+  const [pendingLogout, setPendingLogout] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const blocker = useBlocker(shouldBlockNavigation);
+
+  useBeforeUnload(
+    useCallback(
+      (e) => {
+        if (hasUnsavedChanges) {
+          e.preventDefault();
+          e.returnValue = "";
+        }
+      },
+      [hasUnsavedChanges]
+    )
+  );
+
+  // Restore GitHub Pages SPA deep links redirected via 404.html (?redirect=...)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const redirect = params.get("redirect");
+    if (redirect) {
+      navigate(redirect, { replace: true });
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) {
+      resetBypass();
+    }
+  }, [hasUnsavedChanges, resetBypass]);
 
   // Trigger idempotent Firestore startup seeding on app mount
   useEffect(() => {
@@ -55,9 +104,43 @@ export default function Layout() {
   const isLogin =
     location.pathname === "/login" || location.pathname.endsWith("/login");
 
+  const performLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+      navigate("/");
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
   const handleLogout = async () => {
-    await logout();
-    navigate("/");
+    if (hasUnsavedChanges) {
+      setPendingLogout(true);
+      return;
+    }
+    await performLogout();
+  };
+
+  const handleStayOnPage = useCallback(() => {
+    if (pendingLogout) {
+      setPendingLogout(false);
+    }
+    if (blocker.state === "blocked") {
+      blocker.reset();
+    }
+  }, [pendingLogout, blocker]);
+
+  const handleDiscardAndProceed = async () => {
+    clearAllDirtyAndBypass();
+    if (pendingLogout) {
+      setPendingLogout(false);
+      await performLogout();
+      return;
+    }
+    if (blocker.state === "blocked") {
+      blocker.proceed();
+    }
   };
 
   const handleExportCsv = async () => {
@@ -261,6 +344,14 @@ export default function Layout() {
       <footer className="text-[var(--color-footer)] text-xs mt-6 mb-2 leading-relaxed">
         {t("footer.text")}
       </footer>
+
+      <UnsavedChangesModal
+        isOpen={blocker.state === "blocked" || pendingLogout}
+        dirtyLabels={dirtyFormLabels}
+        onStay={handleStayOnPage}
+        onDiscard={handleDiscardAndProceed}
+        busy={loggingOut}
+      />
     </div>
   );
 }
