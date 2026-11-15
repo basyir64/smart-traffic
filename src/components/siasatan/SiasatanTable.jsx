@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { SIASATAN_PAGE_SIZE } from "../../hooks/useSiasatan";
 import Chip from "../shared/Chip";
 
@@ -10,6 +10,7 @@ export default function SiasatanTable({
   loading = false,
   canEdit = false,
   activeLocations = [],
+  allLocations = [],
   onPageChange,
   onToggleSort,
   onUpdateRecord,
@@ -18,6 +19,21 @@ export default function SiasatanTable({
   const [formState, setFormState] = useState(null);
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState("");
+
+  const locationPool = useMemo(
+    () => (allLocations.length ? allLocations : activeLocations),
+    [allLocations, activeLocations]
+  );
+
+  const selectedModalLocation = useMemo(() => {
+    if (!formState?.location_id) return null;
+    return locationPool.find((l) => l.id === formState.location_id) || null;
+  }, [locationPool, formState]);
+
+  const modalLocationMissingFromActive = useMemo(() => {
+    if (!formState?.location_id) return false;
+    return !activeLocations.some((l) => l.id === formState.location_id);
+  }, [activeLocations, formState]);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / SIASATAN_PAGE_SIZE));
   const startIndex = (currentPage - 1) * SIASATAN_PAGE_SIZE;
@@ -69,7 +85,7 @@ export default function SiasatanTable({
   };
 
   const handleModalLocationChange = (newLocId) => {
-    const matched = activeLocations.find((l) => l.id === newLocId);
+    const matched = locationPool.find((l) => l.id === newLocId);
     setFormState((prev) => ({
       ...prev,
       location_id: newLocId,
@@ -94,7 +110,7 @@ export default function SiasatanTable({
     setSaving(true);
     setModalError("");
     try {
-      const selectedLoc = activeLocations.find(
+      const selectedLoc = locationPool.find(
         (l) => l.id === formState.location_id
       );
       const isMaut = formState.jenis_kemalangan === "Maut";
@@ -106,7 +122,10 @@ export default function SiasatanTable({
         nama: formState.nama.trim().toUpperCase(),
         umur: Number(formState.umur),
         alamat: formState.alamat.trim(),
-        tempat_kemalangan: formState.tempat_kemalangan,
+        tempat_kemalangan:
+          selectedLoc?.road_type ||
+          formState.tempat_kemalangan ||
+          "Persekutuan",
         location_id: selectedLoc?.id || formState.location_id,
         location_name: selectedLoc?.name || formState.location_name,
         tarikh_kemalangan: formState.tarikh_kemalangan,
@@ -432,38 +451,22 @@ export default function SiasatanTable({
                 />
               </div>
 
-              {/* 7. Tempat Kemalangan */}
-              <div className="flex flex-col gap-1.5">
+              {/* 7. Lokasi Hotspot / Jalan */}
+              <div className="col-span-full flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  7. Tempat Kemalangan (Jenis Jalan)
-                </label>
-                <select
-                  value={formState.tempat_kemalangan}
-                  onChange={(e) =>
-                    setFormState((p) => ({
-                      ...p,
-                      tempat_kemalangan: e.target.value,
-                    }))
-                  }
-                  className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
-                >
-                  <option value="Lebuh Raya">Lebuh Raya</option>
-                  <option value="Persekutuan">Persekutuan</option>
-                  <option value="Negeri">Negeri</option>
-                  <option value="Lain-lain">Lain-lain</option>
-                </select>
-              </div>
-
-              {/* 8. Lokasi Hotspot / Jalan */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  8. Lokasi Hotspot / Jalan
+                  7. Lokasi Hotspot / Jalan
                 </label>
                 <select
                   value={formState.location_id}
                   onChange={(e) => handleModalLocationChange(e.target.value)}
                   className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
                 >
+                  {modalLocationMissingFromActive && (
+                    <option value={formState.location_id}>
+                      {selectedModalLocation?.name || formState.location_name}{" "}
+                      (Tidak Aktif)
+                    </option>
+                  )}
                   {activeLocations.map((loc) => (
                     <option key={loc.id} value={loc.id}>
                       {loc.name}
@@ -473,10 +476,49 @@ export default function SiasatanTable({
                 </select>
               </div>
 
-              {/* 9. Tarikh Kemalangan */}
+              {/* Auto-populated read-only location details */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-[var(--color-text-label)] font-semibold flex items-center justify-between gap-2">
+                  <span>Nama Jalan</span>
+                  <span className="text-[10px] font-normal text-[var(--color-text-secondary)]">
+                    Auto (Tidak boleh diubah)
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  aria-readonly="true"
+                  value={selectedModalLocation?.route || ""}
+                  placeholder="-"
+                  className="w-full border border-[var(--color-border)] text-[var(--color-text-secondary)] bg-[#0d192e] px-3 py-2 rounded-[9px] text-[13px] cursor-not-allowed focus:outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-[var(--color-text-label)] font-semibold flex items-center justify-between gap-2">
+                  <span>Jenis Jalan</span>
+                  <span className="text-[10px] font-normal text-[var(--color-text-secondary)]">
+                    Auto (Tidak boleh diubah)
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  aria-readonly="true"
+                  value={
+                    selectedModalLocation?.road_type ||
+                    formState.tempat_kemalangan ||
+                    ""
+                  }
+                  placeholder="-"
+                  className="w-full border border-[var(--color-border)] text-[var(--color-text-secondary)] bg-[#0d192e] px-3 py-2 rounded-[9px] text-[13px] cursor-not-allowed focus:outline-none"
+                />
+              </div>
+
+              {/* 8. Tarikh Kemalangan */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  9. Tarikh Kemalangan
+                  8. Tarikh Kemalangan
                 </label>
                 <input
                   type="date"
@@ -492,10 +534,10 @@ export default function SiasatanTable({
                 />
               </div>
 
-              {/* 10. Waktu Kejadian */}
+              {/* 9. Waktu Kejadian */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  10. Waktu Kejadian (HH:MM)
+                  9. Waktu Kejadian (HH:MM)
                 </label>
                 <input
                   type="time"
@@ -511,10 +553,10 @@ export default function SiasatanTable({
                 />
               </div>
 
-              {/* 11. Kategori Kenderaan */}
+              {/* 10. Kategori Kenderaan */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  11. Kategori Kenderaan
+                  10. Kategori Kenderaan
                 </label>
                 <select
                   value={formState.kategori_kenderaan}
@@ -539,10 +581,10 @@ export default function SiasatanTable({
                 </select>
               </div>
 
-              {/* 12. Kesalahan */}
+              {/* 11. Kesalahan */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  12. Kesalahan (Punca Kemalangan)
+                  11. Kesalahan (Punca Kemalangan)
                 </label>
                 <select
                   value={formState.kesalahan}
@@ -563,10 +605,10 @@ export default function SiasatanTable({
                 </select>
               </div>
 
-              {/* 13. Melibatkan Binatang */}
+              {/* 12. Melibatkan Binatang */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  13. Melibatkan Binatang
+                  12. Melibatkan Binatang
                 </label>
                 <div className="flex gap-4 items-center py-1.5 text-[13px]">
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -626,10 +668,10 @@ export default function SiasatanTable({
                 </div>
               )}
 
-              {/* 14. Jenis Kemalangan */}
+              {/* 13. Jenis Kemalangan */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  14. Jenis Kemalangan
+                  13. Jenis Kemalangan
                 </label>
                 <select
                   value={formState.jenis_kemalangan}

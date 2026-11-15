@@ -16,6 +16,7 @@ export const seedPenguatkuasaan = [
     sita: 1,
     jam_mula: "20:00",
     jam_akhir: "23:30",
+    saman_list: ["SMN-2026-00401", "SMN-2026-00402"],
     created_at: "2026-11-12T20:00:00Z",
   },
   // {

@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import Chip from "../shared/Chip";
+import SamanBatchInput from "./SamanBatchInput";
 
 export default function PenguatkuasaanForm({
   activeLocations = [],
@@ -13,30 +14,31 @@ export default function PenguatkuasaanForm({
   const [sita, setSita] = useState(0);
   const [jamMula, setJamMula] = useState("");
   const [jamAkhir, setJamAkhir] = useState("");
+  const [samanRows, setSamanRows] = useState([""]);
+  const [samanResetKey, setSamanResetKey] = useState(0);
   const [statusText, setStatusText] = useState(
     "Status: Sedia untuk kemasukan rekod operasi baharu (simulasi)."
   );
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (!activeLocations.length) return;
-    const valid = activeLocations.some((l) => l.id === locationId);
-    if (!valid) {
-      setLocationId(activeLocations[0].id);
+  const effectiveLocationId = useMemo(() => {
+    if (locationId && activeLocations.some((l) => l.id === locationId)) {
+      return locationId;
     }
+    return activeLocations[0]?.id || "";
   }, [activeLocations, locationId]);
 
   const resetFields = () => {
     setTarikh("");
-    if (activeLocations[0]) {
-      setLocationId(activeLocations[0].id);
-    }
+    setLocationId(activeLocations[0]?.id || "");
     setKategoriKemalangan("Maut");
     setJenisOperasi("Pematuhan");
     setTangkapan(0);
     setSita(0);
     setJamMula("");
     setJamAkhir("");
+    setSamanRows([""]);
+    setSamanResetKey((k) => k + 1);
   };
 
   const handleReset = () => {
@@ -49,12 +51,15 @@ export default function PenguatkuasaanForm({
     setSubmitting(true);
 
     try {
-      const selectedLoc = activeLocations.find((l) => l.id === locationId);
+      const selectedLoc = activeLocations.find(
+        (l) => l.id === effectiveLocationId
+      );
       const savedTarikh = tarikh;
+      const samanList = samanRows.map((s) => s.trim()).filter(Boolean);
 
       await onAddOperation({
         tarikh: savedTarikh,
-        location_id: selectedLoc?.id || locationId,
+        location_id: selectedLoc?.id || effectiveLocationId,
         location_name: selectedLoc?.name || "",
         kategori_kemalangan: kategoriKemalangan,
         jenis_operasi: jenisOperasi,
@@ -62,6 +67,7 @@ export default function PenguatkuasaanForm({
         sita: Math.max(0, parseInt(sita, 10) || 0),
         jam_mula: jamMula,
         jam_akhir: jamAkhir,
+        saman_list: samanList,
       });
 
       resetFields();
@@ -106,17 +112,17 @@ export default function PenguatkuasaanForm({
           />
         </div>
 
-        {/* Lokasi Hotspot / Jalan */}
+        {/* 2. Lokasi Hotspot / Jalan */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="opLokasi"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            Lokasi Hotspot / Jalan
+            2. Lokasi Hotspot / Jalan
           </label>
           <select
             id="opLokasi"
-            value={locationId}
+            value={effectiveLocationId}
             onChange={(e) => setLocationId(e.target.value)}
             required
             className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
@@ -130,13 +136,13 @@ export default function PenguatkuasaanForm({
           </select>
         </div>
 
-        {/* 2. Kategori Kemalangan */}
+        {/* 3. Kategori Kemalangan */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="opKategoriKemalangan"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            2. Kategori Kemalangan
+            3. Kategori Kemalangan
           </label>
           <select
             id="opKategoriKemalangan"
@@ -153,13 +159,13 @@ export default function PenguatkuasaanForm({
           </select>
         </div>
 
-        {/* 3. Jenis Operasi */}
+        {/* 4. Jenis Operasi */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="opJenisOperasi"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            3. Jenis Operasi
+            4. Jenis Operasi
           </label>
           <select
             id="opJenisOperasi"
@@ -176,13 +182,13 @@ export default function PenguatkuasaanForm({
           </select>
         </div>
 
-        {/* 4. Tangkapan */}
+        {/* 5. Tangkapan */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="opTangkapan"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            4. Tangkapan
+            5. Tangkapan
           </label>
           <input
             id="opTangkapan"
@@ -196,13 +202,13 @@ export default function PenguatkuasaanForm({
           />
         </div>
 
-        {/* 5. Sita */}
+        {/* 6. Sita */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="opSita"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            5. Sita
+            6. Sita
           </label>
           <input
             id="opSita"
@@ -216,13 +222,13 @@ export default function PenguatkuasaanForm({
           />
         </div>
 
-        {/* 6. Jam Mula (HH:MM) */}
+        {/* 7. Jam Mula (HH:MM) */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="opJamMula"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            6. Jam Mula (HH:MM)
+            7. Jam Mula (HH:MM)
           </label>
           <input
             id="opJamMula"
@@ -234,13 +240,13 @@ export default function PenguatkuasaanForm({
           />
         </div>
 
-        {/* 7. Jam Akhir (HH:MM) */}
+        {/* 8. Jam Akhir (HH:MM) */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="opJamAkhir"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            7. Jam Akhir (HH:MM)
+            8. Jam Akhir (HH:MM)
           </label>
           <input
             id="opJamAkhir"
@@ -251,6 +257,15 @@ export default function PenguatkuasaanForm({
             className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
           />
         </div>
+
+        {/* 9. Saman */}
+        <SamanBatchInput
+          key={samanResetKey}
+          value={samanRows}
+          onChange={setSamanRows}
+          disabled={submitting}
+          fieldNumber={9}
+        />
 
         {/* Actions */}
         <div className="col-span-full mt-1">

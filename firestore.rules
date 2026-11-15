@@ -34,12 +34,13 @@ service cloud.firestore {
 
     // ── Locations & Blackspots Collection ──
     // Read: Public (Dashboard Utama & dropdowns)
-    // Write: Strictly Admin only, except initial bootstrap when canonical seed location does not exist yet
+    // Write: 'Siasatan' or 'Admin' roles, plus initial bootstrap when canonical seed location does not exist yet
     match /locations/{locationId} {
       allow read: if true;
       allow create: if !exists(/databases/$(database)/documents/locations/km31-jalan-ipoh-lumut)
+        || hasRole('Siasatan')
         || hasRole('Admin');
-      allow update, delete: if hasRole('Admin');
+      allow update, delete: if hasRole('Siasatan') || hasRole('Admin');
     }
 
     // ── Period Baselines Collection ──

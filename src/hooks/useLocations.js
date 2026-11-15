@@ -214,11 +214,39 @@ export function useLocations({ paginated = false } = {}) {
       const suffix = landmark ? ` (${landmark})` : "";
       const name = `${prefix}${route}${suffix}`.trim();
 
-      const baseId = `${km ? km + "-" : ""}${route}`
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "");
-      const id = baseId || `loc-${Date.now()}`;
+      const slugify = (text) =>
+        String(text || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "");
+
+      const baseId = slugify(`${km ? km + "-" : ""}${route}`) || `loc-${Date.now()}`;
+      let id = baseId;
+
+      const existingBase = await getDoc(doc(db, "locations", id));
+      if (existingBase.exists()) {
+        if (String(existingBase.data()?.name || "").trim() === name) {
+          throw new Error(`Lokasi "${name}" sudah wujud dalam sistem.`);
+        }
+        const landmarkSlug = slugify(landmark);
+        const candidateId = landmarkSlug ? `${baseId}-${landmarkSlug}` : "";
+        if (candidateId) {
+          const existingCandidate = await getDoc(
+            doc(db, "locations", candidateId)
+          );
+          if (!existingCandidate.exists()) {
+            id = candidateId;
+          } else if (
+            String(existingCandidate.data()?.name || "").trim() === name
+          ) {
+            throw new Error(`Lokasi "${name}" sudah wujud dalam sistem.`);
+          } else {
+            id = `${candidateId}-${Date.now().toString(36)}`;
+          }
+        } else {
+          id = `${baseId}-${Date.now().toString(36)}`;
+        }
+      }
 
       const is_blackspot = Boolean(input.is_blackspot);
       const active = input.active !== undefined ? Boolean(input.active) : true;
@@ -264,6 +292,10 @@ export function useLocations({ paginated = false } = {}) {
 
       if (paginated) {
         await loadPage(1, true);
+      } else {
+        setLocations((prev) =>
+          prev.some((l) => l.id === newLoc.id) ? prev : [...prev, newLoc]
+        );
       }
 
       return newLoc;

@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import Chip from "../shared/Chip";
+import LokasiForm from "../locations/LokasiForm";
 
 export default function SiasatanForm({
   activeLocations = [],
   onAddRecord,
+  onAddLocation,
 }) {
   const [noSaman, setNoSaman] = useState("");
   const [noKenderaan, setNoKenderaan] = useState("");
@@ -12,7 +14,6 @@ export default function SiasatanForm({
   const [umur, setUmur] = useState("");
   const [alamat, setAlamat] = useState("");
   const [locationId, setLocationId] = useState("");
-  const [tempatKemalangan, setTempatKemalangan] = useState("Persekutuan");
   const [tarikhKemalangan, setTarikhKemalangan] = useState("");
   const [waktuKejadian, setWaktuKejadian] = useState("");
   const [kategoriKenderaan, setKategoriKenderaan] = useState("Motosikal");
@@ -21,34 +22,42 @@ export default function SiasatanForm({
   const [jenisBinatang, setJenisBinatang] = useState("Kerbau");
   const [jenisKemalangan, setJenisKemalangan] = useState("Rosak sahaja");
   const [bilanganMaut, setBilanganMaut] = useState(1);
+  const [showLokasiModal, setShowLokasiModal] = useState(false);
   const [statusText, setStatusText] = useState(
     "Status: Sedia untuk kemasukan rekod baharu (simulasi)."
   );
   const [submitting, setSubmitting] = useState(false);
 
-  // Sync default selected location & road_type when activeLocations load
-  useEffect(() => {
-    if (!activeLocations.length) return;
-    const currentValid = activeLocations.find((l) => l.id === locationId);
-    if (!currentValid) {
-      const first = activeLocations[0];
-      setLocationId(first.id);
-      setTempatKemalangan(first.road_type || "Persekutuan");
+  const effectiveLocationId = useMemo(() => {
+    if (locationId && activeLocations.some((l) => l.id === locationId)) {
+      return locationId;
     }
+    return activeLocations[0]?.id || "";
   }, [activeLocations, locationId]);
 
-  const handleLocationChange = (newLocId) => {
-    setLocationId(newLocId);
-    const matched = activeLocations.find((l) => l.id === newLocId);
-    if (matched && matched.road_type) {
-      setTempatKemalangan(matched.road_type);
-    }
-  };
+  const selectedLocation = useMemo(
+    () => activeLocations.find((l) => l.id === effectiveLocationId) || null,
+    [activeLocations, effectiveLocationId]
+  );
 
   const handleKesalahanChange = (newKesalahan) => {
     setKesalahan(newKesalahan);
     if (newKesalahan === "Langgar binatang") {
       setMelibatkanBinatang(true);
+    }
+  };
+
+  const handleLocationCreated = (created) => {
+    setShowLokasiModal(false);
+    if (created?.active) {
+      setLocationId(created.id);
+      setStatusText(
+        `Status: Lokasi baharu "${created.name}" berjaya didaftarkan dan dipilih.`
+      );
+    } else if (created) {
+      setStatusText(
+        `Status: Lokasi "${created.name}" disimpan sebagai Tidak Aktif dan tidak dipaparkan dalam senarai aktif.`
+      );
     }
   };
 
@@ -59,12 +68,7 @@ export default function SiasatanForm({
     setNama("");
     setUmur("");
     setAlamat("");
-    if (activeLocations[0]) {
-      setLocationId(activeLocations[0].id);
-      setTempatKemalangan(activeLocations[0].road_type || "Persekutuan");
-    } else {
-      setTempatKemalangan("Persekutuan");
-    }
+    setLocationId(activeLocations[0]?.id || "");
     setTarikhKemalangan("");
     setWaktuKejadian("");
     setKategoriKenderaan("Motosikal");
@@ -85,7 +89,6 @@ export default function SiasatanForm({
     setSubmitting(true);
 
     try {
-      const selectedLoc = activeLocations.find((l) => l.id === locationId);
       const isMaut = jenisKemalangan === "Maut";
       const savedSaman = noSaman.trim();
 
@@ -96,9 +99,9 @@ export default function SiasatanForm({
         nama: nama.trim().toUpperCase(),
         umur: Number(umur),
         alamat: alamat.trim(),
-        tempat_kemalangan: tempatKemalangan,
-        location_id: selectedLoc?.id || locationId,
-        location_name: selectedLoc?.name || "",
+        tempat_kemalangan: selectedLocation?.road_type || "Persekutuan",
+        location_id: selectedLocation?.id || effectiveLocationId,
+        location_name: selectedLocation?.name || "",
         tarikh_kemalangan: tarikhKemalangan,
         waktu_kejadian: waktuKejadian,
         kategori_kenderaan: kategoriKenderaan,
@@ -252,59 +255,92 @@ export default function SiasatanForm({
           />
         </div>
 
-        {/* 7. Tempat Kemalangan (Jenis Jalan) */}
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="tempatKemalangan"
-            className="text-xs text-[var(--color-text-label)] font-semibold"
-          >
-            7. Tempat Kemalangan (Jenis Jalan)
-          </label>
-          <select
-            id="tempatKemalangan"
-            value={tempatKemalangan}
-            onChange={(e) => setTempatKemalangan(e.target.value)}
-            required
-            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
-          >
-            <option value="Lebuh Raya">Lebuh Raya</option>
-            <option value="Persekutuan">Persekutuan</option>
-            <option value="Negeri">Negeri</option>
-            <option value="Lain-lain">Lain-lain</option>
-          </select>
-        </div>
-
-        {/* 8. Lokasi Hotspot / Jalan */}
-        <div className="flex flex-col gap-1.5">
+        {/* 7. Lokasi Hotspot / Jalan (+ modal tambah lokasi) */}
+        <div className="col-span-full flex flex-col gap-1.5">
           <label
             htmlFor="lokasiHotspot"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            8. Lokasi Hotspot / Jalan
+            7. Lokasi Hotspot / Jalan
           </label>
-          <select
-            id="lokasiHotspot"
-            value={locationId}
-            onChange={(e) => handleLocationChange(e.target.value)}
-            required
-            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
-          >
-            {activeLocations.map((loc) => (
-              <option key={loc.id} value={loc.id}>
-                {loc.name}
-                {loc.is_blackspot ? " ⚫" : ""}
-              </option>
-            ))}
-          </select>
+          <div className="flex gap-2.5 items-stretch max-[550px]:flex-col">
+            <select
+              id="lokasiHotspot"
+              value={effectiveLocationId}
+              onChange={(e) => setLocationId(e.target.value)}
+              required
+              className="flex-1 border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+            >
+              {activeLocations.map((loc) => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.name}
+                  {loc.is_blackspot ? " ⚫" : ""}
+                </option>
+              ))}
+            </select>
+            {onAddLocation && (
+              <button
+                type="button"
+                onClick={() => setShowLokasiModal(true)}
+                disabled={submitting}
+                className="cursor-pointer shrink-0 border border-[var(--color-accent)] text-[var(--color-accent-soft)] bg-[#1c2b48] px-3.5 py-2.5 rounded-[9px] text-xs font-bold hover:brightness-110 transition-all disabled:opacity-50"
+              >
+                + Tambah Lokasi
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* 9. Tarikh Kemalangan */}
+        {/* Auto-populated read-only location details */}
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor="siasatanNamaJalan"
+            className="text-xs text-[var(--color-text-label)] font-semibold flex items-center justify-between gap-2"
+          >
+            <span>Nama Jalan</span>
+            <span className="text-[10px] font-normal text-[var(--color-text-secondary)]">
+              Auto (Tidak boleh diubah)
+            </span>
+          </label>
+          <input
+            id="siasatanNamaJalan"
+            type="text"
+            readOnly
+            aria-readonly="true"
+            value={selectedLocation?.route || ""}
+            placeholder="-"
+            className="w-full border border-[var(--color-border)] text-[var(--color-text-secondary)] bg-[#0d192e] px-3 py-2.5 rounded-[9px] text-[13px] cursor-not-allowed focus:outline-none"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor="siasatanJenisJalan"
+            className="text-xs text-[var(--color-text-label)] font-semibold flex items-center justify-between gap-2"
+          >
+            <span>Jenis Jalan</span>
+            <span className="text-[10px] font-normal text-[var(--color-text-secondary)]">
+              Auto (Tidak boleh diubah)
+            </span>
+          </label>
+          <input
+            id="siasatanJenisJalan"
+            type="text"
+            readOnly
+            aria-readonly="true"
+            value={selectedLocation?.road_type || ""}
+            placeholder="-"
+            className="w-full border border-[var(--color-border)] text-[var(--color-text-secondary)] bg-[#0d192e] px-3 py-2.5 rounded-[9px] text-[13px] cursor-not-allowed focus:outline-none"
+          />
+        </div>
+
+        {/* 8. Tarikh Kemalangan */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="tarikhKemalangan"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            9. Tarikh Kemalangan
+            8. Tarikh Kemalangan
           </label>
           <input
             id="tarikhKemalangan"
@@ -316,13 +352,13 @@ export default function SiasatanForm({
           />
         </div>
 
-        {/* 10. Waktu Kejadian (HH:MM) */}
+        {/* 9. Waktu Kejadian (HH:MM) */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="waktuKejadian"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            10. Waktu Kejadian (HH:MM)
+            9. Waktu Kejadian (HH:MM)
           </label>
           <input
             id="waktuKejadian"
@@ -334,13 +370,13 @@ export default function SiasatanForm({
           />
         </div>
 
-        {/* 11. Kategori Kenderaan */}
+        {/* 10. Kategori Kenderaan */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="kategoriKenderaan"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            11. Kategori Kenderaan
+            10. Kategori Kenderaan
           </label>
           <select
             id="kategoriKenderaan"
@@ -362,13 +398,13 @@ export default function SiasatanForm({
           </select>
         </div>
 
-        {/* 12. Kesalahan (Punca Kemalangan) */}
+        {/* 11. Kesalahan (Punca Kemalangan) */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="kesalahan"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            12. Kesalahan (Punca Kemalangan)
+            11. Kesalahan (Punca Kemalangan)
           </label>
           <select
             id="kesalahan"
@@ -389,10 +425,10 @@ export default function SiasatanForm({
           </select>
         </div>
 
-        {/* 13. Melibatkan Binatang */}
+        {/* 12. Melibatkan Binatang */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs text-[var(--color-text-label)] font-semibold">
-            13. Melibatkan Binatang
+            12. Melibatkan Binatang
           </label>
           <div className="flex gap-4 items-center py-1.5 text-[13px]">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -441,13 +477,13 @@ export default function SiasatanForm({
           </div>
         )}
 
-        {/* 14. Jenis Kemalangan */}
+        {/* 13. Jenis Kemalangan */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="jenisKemalangan"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            14. Jenis Kemalangan
+            13. Jenis Kemalangan
           </label>
           <select
             id="jenisKemalangan"
@@ -509,6 +545,15 @@ export default function SiasatanForm({
           </p>
         </div>
       </form>
+
+      {showLokasiModal && onAddLocation && (
+        <LokasiForm
+          variant="modal"
+          onAddLocation={onAddLocation}
+          onSuccess={handleLocationCreated}
+          onCancel={() => setShowLokasiModal(false)}
+        />
+      )}
     </div>
   );
 }

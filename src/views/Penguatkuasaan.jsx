@@ -7,7 +7,7 @@ import PenguatkuasaanTable from "../components/penguatkuasaan/PenguatkuasaanTabl
 
 export default function Penguatkuasaan() {
   const { role, canModifyPenguatkuasaan } = useAuth();
-  const { activeLocations } = useLocations();
+  const { locations, activeLocations } = useLocations();
   const {
     pageOperations,
     totalCount,
@@ -48,6 +48,7 @@ export default function Penguatkuasaan() {
         loading={loadingPage}
         canEdit={canModifyPenguatkuasaan}
         activeLocations={activeLocations}
+        allLocations={locations}
         onPageChange={(nextPage) => loadPage(nextPage)}
         onToggleSort={toggleSortOrder}
         onUpdateOperation={updatePenguatkuasaan}

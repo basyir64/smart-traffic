@@ -9,7 +9,7 @@ import FactorBars from "../components/charts/FactorBars";
 
 export default function Siasatan() {
   const { role, canModifySiasatan } = useAuth();
-  const { activeLocations } = useLocations();
+  const { locations, activeLocations, addLocation } = useLocations();
   const {
     pageRecords,
     totalCount,
@@ -56,6 +56,7 @@ export default function Siasatan() {
         <SiasatanForm
           activeLocations={activeLocations}
           onAddRecord={handleAddRecord}
+          onAddLocation={addLocation}
         />
       ) : (
         <div className="border border-[var(--color-accent)] bg-[#242a3a] text-[#f3d79b] rounded-xl p-4 text-xs leading-relaxed">
@@ -79,6 +80,7 @@ export default function Siasatan() {
         loading={loadingPage}
         canEdit={canModifySiasatan}
         activeLocations={activeLocations}
+        allLocations={locations}
         onPageChange={(nextPage) => loadPage(nextPage)}
         onToggleSort={toggleSortOrder}
         onUpdateRecord={handleUpdateRecord}

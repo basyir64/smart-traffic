@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { PENGUATKUASAAN_PAGE_SIZE } from "../../hooks/usePenguatkuasaan";
 import Chip from "../shared/Chip";
+import SamanBatchInput from "./SamanBatchInput";
 
 export default function PenguatkuasaanTable({
   operations = [],
@@ -10,6 +11,7 @@ export default function PenguatkuasaanTable({
   loading = false,
   canEdit = false,
   activeLocations = [],
+  allLocations = [],
   onPageChange,
   onToggleSort,
   onUpdateOperation,
@@ -18,6 +20,21 @@ export default function PenguatkuasaanTable({
   const [formState, setFormState] = useState(null);
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState("");
+
+  const locationPool = useMemo(
+    () => (allLocations.length ? allLocations : activeLocations),
+    [allLocations, activeLocations]
+  );
+
+  const selectedModalLocation = useMemo(() => {
+    if (!formState?.location_id) return null;
+    return locationPool.find((l) => l.id === formState.location_id) || null;
+  }, [locationPool, formState]);
+
+  const modalLocationMissingFromActive = useMemo(() => {
+    if (!formState?.location_id) return false;
+    return !activeLocations.some((l) => l.id === formState.location_id);
+  }, [activeLocations, formState]);
 
   const totalPages = Math.max(
     1,
@@ -53,6 +70,7 @@ export default function PenguatkuasaanTable({
       sita: op.sita ?? 0,
       jam_mula: op.jam_mula || "20:00",
       jam_akhir: op.jam_akhir || "23:00",
+      saman_rows: op.saman_list?.length ? [...op.saman_list] : [""],
     });
   };
 
@@ -70,9 +88,12 @@ export default function PenguatkuasaanTable({
     setSaving(true);
     setModalError("");
     try {
-      const selectedLoc = activeLocations.find(
+      const selectedLoc = locationPool.find(
         (l) => l.id === formState.location_id
       );
+      const samanList = (formState.saman_rows || [])
+        .map((s) => s.trim())
+        .filter(Boolean);
 
       await onUpdateOperation(editingOp.id, {
         tarikh: formState.tarikh,
@@ -84,6 +105,7 @@ export default function PenguatkuasaanTable({
         sita: Math.max(0, parseInt(formState.sita, 10) || 0),
         jam_mula: formState.jam_mula,
         jam_akhir: formState.jam_akhir,
+        saman_list: samanList,
       });
 
       setEditingOp(null);
@@ -131,6 +153,7 @@ export default function PenguatkuasaanTable({
               <th className="text-left py-3 px-2">Kat. Kemalangan</th>
               <th className="text-left py-3 px-2">Tangkapan</th>
               <th className="text-left py-3 px-2">Sita</th>
+              <th className="text-left py-3 px-2">Saman</th>
               <th className="text-left py-3 px-2">Masa</th>
             </tr>
           </thead>
@@ -138,7 +161,7 @@ export default function PenguatkuasaanTable({
             {loading ? (
               <tr className="border-b border-[var(--color-table-border)] text-xs">
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="py-4 px-2 text-center text-[var(--color-text-secondary)]"
                 >
                   Memuatkan halaman {currentPage} dari Firestore...
@@ -147,39 +170,67 @@ export default function PenguatkuasaanTable({
             ) : operations.length === 0 ? (
               <tr className="border-b border-[var(--color-table-border)] text-xs">
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="py-3 px-2 text-[var(--color-text-secondary)]"
                 >
                   Tiada rekod operasi penguatkuasaan direkodkan.
                 </td>
               </tr>
             ) : (
-              operations.map((op) => (
-                <tr
-                  key={op.id}
-                  onClick={() => openEditModal(op)}
-                  title={
-                    canEdit
-                      ? "Klik untuk kemas kini rekod operasi ini"
-                      : "Hanya Pegawai Penguatkuasaan atau Admin boleh mengemas kini rekod"
-                  }
-                  className={`border-b border-[var(--color-table-border)] text-xs transition-colors ${
-                    canEdit
-                      ? "cursor-pointer hover:bg-[#192b49]/80"
-                      : "hover:bg-[#192b49]/35"
-                  }`}
-                >
-                  <td className="py-3 px-2 font-semibold">{op.tarikh}</td>
-                  <td className="py-3 px-2">{op.location_name}</td>
-                  <td className="py-3 px-2">{op.jenis_operasi}</td>
-                  <td className="py-3 px-2">{op.kategori_kemalangan}</td>
-                  <td className="py-3 px-2">{op.tangkapan}</td>
-                  <td className="py-3 px-2">{op.sita}</td>
-                  <td className="py-3 px-2">
-                    {op.jam_mula}–{op.jam_akhir}
-                  </td>
-                </tr>
-              ))
+              operations.map((op) => {
+                const samanList = op.saman_list || [];
+                const samanCount = samanList.length;
+
+                return (
+                  <tr
+                    key={op.id}
+                    onClick={() => openEditModal(op)}
+                    title={
+                      canEdit
+                        ? "Klik untuk kemas kini rekod operasi ini"
+                        : "Hanya Pegawai Penguatkuasaan atau Admin boleh mengemas kini rekod"
+                    }
+                    className={`border-b border-[var(--color-table-border)] text-xs transition-colors ${
+                      canEdit
+                        ? "cursor-pointer hover:bg-[#192b49]/80"
+                        : "hover:bg-[#192b49]/35"
+                    }`}
+                  >
+                    <td className="py-3 px-2 font-semibold">{op.tarikh}</td>
+                    <td className="py-3 px-2">{op.location_name}</td>
+                    <td className="py-3 px-2">{op.jenis_operasi}</td>
+                    <td className="py-3 px-2">{op.kategori_kemalangan}</td>
+                    <td className="py-3 px-2">{op.tangkapan}</td>
+                    <td className="py-3 px-2">{op.sita}</td>
+                    <td
+                      className="py-3 px-2"
+                      title={
+                        samanCount > 0
+                          ? samanList.join(", ")
+                          : "Tiada saman direkodkan"
+                      }
+                    >
+                      {samanCount > 0 ? (
+                        <div>
+                          <span className="inline-block rounded-[6px] px-1.5 py-0.5 text-[11px] font-semibold bg-[#1c2b48] text-[var(--color-accent-soft)] border border-[#364d75]">
+                            {samanCount} saman
+                          </span>
+                          <div className="text-[11px] text-[var(--color-text-secondary)] truncate max-w-[160px] mt-0.5">
+                            {samanList.join(", ")}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-[var(--color-text-secondary)]">
+                          0
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-2">
+                      {op.jam_mula}–{op.jam_akhir}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -294,10 +345,10 @@ export default function PenguatkuasaanTable({
                 />
               </div>
 
-              {/* Lokasi Hotspot / Jalan */}
+              {/* 2. Lokasi Hotspot / Jalan */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  Lokasi Hotspot / Jalan
+                  2. Lokasi Hotspot / Jalan
                 </label>
                 <select
                   value={formState.location_id}
@@ -306,6 +357,12 @@ export default function PenguatkuasaanTable({
                   }
                   className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
                 >
+                  {modalLocationMissingFromActive && (
+                    <option value={formState.location_id}>
+                      {selectedModalLocation?.name || formState.location_name}{" "}
+                      (Tidak Aktif)
+                    </option>
+                  )}
                   {activeLocations.map((loc) => (
                     <option key={loc.id} value={loc.id}>
                       {loc.name}
@@ -315,10 +372,10 @@ export default function PenguatkuasaanTable({
                 </select>
               </div>
 
-              {/* 2. Kategori Kemalangan */}
+              {/* 3. Kategori Kemalangan */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  2. Kategori Kemalangan
+                  3. Kategori Kemalangan
                 </label>
                 <select
                   value={formState.kategori_kemalangan}
@@ -338,10 +395,10 @@ export default function PenguatkuasaanTable({
                 </select>
               </div>
 
-              {/* 3. Jenis Operasi */}
+              {/* 4. Jenis Operasi */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  3. Jenis Operasi
+                  4. Jenis Operasi
                 </label>
                 <select
                   value={formState.jenis_operasi}
@@ -361,10 +418,10 @@ export default function PenguatkuasaanTable({
                 </select>
               </div>
 
-              {/* 4. Tangkapan */}
+              {/* 5. Tangkapan */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  4. Tangkapan
+                  5. Tangkapan
                 </label>
                 <input
                   type="number"
@@ -378,10 +435,10 @@ export default function PenguatkuasaanTable({
                 />
               </div>
 
-              {/* 5. Sita */}
+              {/* 6. Sita */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  5. Sita
+                  6. Sita
                 </label>
                 <input
                   type="number"
@@ -395,10 +452,10 @@ export default function PenguatkuasaanTable({
                 />
               </div>
 
-              {/* 6. Jam Mula */}
+              {/* 7. Jam Mula */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  6. Jam Mula (HH:MM)
+                  7. Jam Mula (HH:MM)
                 </label>
                 <input
                   type="time"
@@ -411,10 +468,10 @@ export default function PenguatkuasaanTable({
                 />
               </div>
 
-              {/* 7. Jam Akhir */}
+              {/* 8. Jam Akhir */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  7. Jam Akhir (HH:MM)
+                  8. Jam Akhir (HH:MM)
                 </label>
                 <input
                   type="time"
@@ -426,6 +483,17 @@ export default function PenguatkuasaanTable({
                   className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
                 />
               </div>
+
+              {/* 9. Saman */}
+              <SamanBatchInput
+                key={editingOp.id}
+                value={formState.saman_rows}
+                onChange={(nextRows) =>
+                  setFormState((p) => ({ ...p, saman_rows: nextRows }))
+                }
+                disabled={saving}
+                fieldNumber={9}
+              />
 
               <div className="col-span-full flex justify-end gap-2.5 pt-3 border-t border-[var(--color-table-border)] mt-2">
                 <button

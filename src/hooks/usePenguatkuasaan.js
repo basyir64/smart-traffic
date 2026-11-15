@@ -19,6 +19,10 @@ import { getPeriodQueryConstraints } from "./usePeriodData";
 export const PENGUATKUASAAN_PAGE_SIZE = 5;
 
 export function normalizeOperation(raw) {
+  const saman_list = Array.isArray(raw.saman_list)
+    ? raw.saman_list.map((s) => String(s || "").trim()).filter(Boolean)
+    : [];
+
   return {
     id: raw.id || `op-${Date.now()}`,
     tarikh: raw.tarikh || "",
@@ -30,6 +34,7 @@ export function normalizeOperation(raw) {
     sita: Math.max(0, Number(raw.sita ?? 0)),
     jam_mula: raw.jam_mula || "20:00",
     jam_akhir: raw.jam_akhir || "23:00",
+    saman_list,
   };
 }
 

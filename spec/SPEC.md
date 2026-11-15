@@ -143,23 +143,28 @@ Stacked vertically into four sections:
 3. **Senarai Rekod Siasatan** (third — paginated, showing 5 newest records per page)
 4. **Faktor Penyumbang Direkodkan** (bottom-most)
 
-#### 1. Investigation Input Form (`Borang Input Data Siasatan`)
-14 fields:
+#### 1. Investigation Input Form (`Borang Input Data Siasatan`) — *(Dikemas kini UAT 2)*
+13 numbered fields (plus 2 dynamic read-only location preview fields):
 1. **No. Saman** (text)
 2. **No. Kenderaan** (text)
 3. **No. IC** (numerical)
 4. **Nama** (text)
 5. **Umur** (numerical, 0–120)
 6. **Alamat** (text)
-7. **Tempat Kemalangan (Jenis Jalan)** (select: `Lebuh Raya`, `Persekutuan`, `Negeri`, `Lain-lain` — auto-populated when a location is selected, or manually selectable)
-8. **Lokasi Hotspot / Jalan** (select populated from active `locations` collection: e.g. `KM31 JALAN IPOH-LUMUT (L/ISYARAT SIDEC)` — links each `siasatan` record via `location_id` + `location_name` to drive `Hotspot Keutamaan` & `Risiko Lokasi Pilihan` on Dashboard)
-9. **Tarikh Kemalangan** (date)
-10. **Waktu Kejadian** (time `HH:MM`)
-11. **Kategori Kenderaan** (select: `Motosikal`, `Kereta`, `MPV / SUV`, `Van`, `Bas`, `Lori / Kenderaan Berat`, `Basikal`, `Lain-lain`)
-12. **Kesalahan / Punca Kemalangan** (select: `Kelajuan`, `Tidak peka keadaan sekeliling`, `Gagal patuh isyarat`, `Keadaan jalan`, `Langgar binatang`, `Faktor kenderaan`, `Lain-lain` — harmonized with the contributing factors analysis)
-13. **Melibatkan Binatang** (radio: `Tidak` / `Ya`)
+7. **Lokasi Hotspot / Jalan** (select populated from active `locations` collection: e.g. `KM31 JALAN IPOH-LUMUT (L/ISYARAT SIDEC)` — links each `siasatan` record via `location_id` + `location_name` to drive `Hotspot Keutamaan` & `Risiko Lokasi Pilihan` on Dashboard)
+   - Includes a **`+ Tambah Lokasi`** button next to/inline with the dropdown that opens a modal containing the reusable location registration form (identical to `Lokasi` tab's `Borang Daftar Lokasi & Lampiran Blackspot`).
+   - Upon creating a new active location via the modal, it is immediately auto-selected in field `7. Lokasi Hotspot / Jalan` and the modal closes.
+   - **Read-only Dynamic Location Preview Fields** *(populated automatically from the selected location; uneditable)*:
+     - **Nama Jalan** (populated from `location.route`, corresponding to field 1 `Nama Laluan` of the Lokasi form)
+     - **Jenis Jalan** (populated from `location.road_type`, corresponding to field 4 `Jenis Jalan` of the Lokasi form)
+   - *(Note: The previous standalone editable field `Tempat Kemalangan (Jenis Jalan)` is removed from both `SiasatanForm` and `SiasatanTable`'s Edit Modal; `tempat_kemalangan` continues to be auto-derived and persisted from `selectedLocation.road_type` in Firestore so `9 Elemen Data Kemalangan` Element 4 and `SiasatanTable` continue working seamlessly.)*
+8. **Tarikh Kemalangan** (date)
+9. **Waktu Kejadian** (time `HH:MM`)
+10. **Kategori Kenderaan** (select: `Motosikal`, `Kereta`, `MPV / SUV`, `Van`, `Bas`, `Lori / Kenderaan Berat`, `Basikal`, `Lain-lain`)
+11. **Kesalahan / Punca Kemalangan** (select: `Kelajuan`, `Tidak peka keadaan sekeliling`, `Gagal patuh isyarat`, `Keadaan jalan`, `Langgar binatang`, `Faktor kenderaan`, `Lain-lain` — harmonized with the contributing factors analysis)
+12. **Melibatkan Binatang** (radio: `Tidak` / `Ya`)
     - When `Ya` is selected, reveals **Jenis Binatang** (select: `Kerbau`, `Lembu`, `Babi`, `Lain-lain`)
-14. **Jenis Kemalangan** (select: `Rosak sahaja`, `Cedera ringan`, `Cedera parah`, `Maut`)
+13. **Jenis Kemalangan** (select: `Rosak sahaja`, `Cedera ringan`, `Cedera parah`, `Maut`)
     - When `Maut` is selected, directly reveals **Bilangan Kematian (Nyawa)** (numerical, min 1). (Separate *Maut* radio button removed as redundant).
 - Actions: **Simpan Rekod Siasatan** (submit) and **Kosongkan Borang** (reset)
 
@@ -188,7 +193,7 @@ Live all-time aggregation table placed directly underneath the input form (font 
 #### 3. Investigation Records Table (`Senarai Rekod Siasatan`)
 - Displays submitted records sorted newest-first by default (`orderBy("tarikh_kemalangan", "desc")`), paginated at **5 records per page** with columns: No. Saman, No. Kenderaan, Lokasi Hotspot, Tempat, Tarikh & Waktu (`↓` / `↑`, clickable to toggle sort direction), Kenderaan, Kesalahan, Binatang, Jenis Kemalangan, Maut
 - **Quota-Preserving Native Firestore Pagination**: Uses `getCountFromServer` for total record count and `startAfter(cursor)` + `limit(5)` (`getDocs`) so Firestore reads are fired **only when the page or sort order changes** (modeled after `useSituationService` and `useStoryService`).
-- **Interactive Row Edit Modal (`Kemaskini Rekod Siasatan`)**: For authorized users (`Siasatan` or `Admin`), each row highlights on hover (`cursor: pointer`) and opens an edit modal on click to update the record in Firestore (`updateDoc`).
+- **Interactive Row Edit Modal (`Kemaskini Rekod Siasatan`)**: For authorized users (`Siasatan` or `Admin`), each row highlights on hover (`cursor: pointer`) and opens an edit modal on click to update the record in Firestore (`updateDoc`). *(UAT 2: Mirrors `SiasatanForm` — replaces editable `Tempat Kemalangan` dropdown with uneditable dynamic `Nama Jalan` and `Jenis Jalan` fields populated from the selected `Lokasi Hotspot / Jalan`, while auto-deriving and persisting `tempat_kemalangan` from `road_type`.)*
 - Includes total count badge, pagination controls (`← Sebelumnya`, page numbers, `Seterusnya →`), and privacy notice reminding users not to enter real IC or personal data
 
 #### 4. Contributing Factors Chart (`Faktor Penyumbang Direkodkan`)
@@ -208,8 +213,8 @@ Live all-time aggregation table placed directly underneath the input form (font 
 
 Logs enforcement operations (roadblocks/ops) conducted by BSPT teams. Sections are stacked vertically (full-width) with `Senarai Rekod Penguatkuasaan` placed below `Borang Input Penguatkuasaan`.
 
-#### 1. Enforcement Input Form (`Borang Input Penguatkuasaan`)
-Fields:
+#### 1. Enforcement Input Form (`Borang Input Penguatkuasaan`) — *(Dikemas kini UAT 2)*
+9 numbered fields (fixing the previously unnumbered `Lokasi Hotspot / Jalan` field):
 1. **Tarikh** (date)
 2. **Lokasi Hotspot / Jalan** (select populated from `locations` collection — links operation to a hotspot)
 3. **Kategori Kemalangan** (select: `Maut`, `Parah`, `Ringan`, `Rosak sahaja`, `Bukan kemalangan`)
@@ -218,12 +223,19 @@ Fields:
 6. **Sita** (numerical, min 0)
 7. **Jam Mula** (time `HH:MM`)
 8. **Jam Akhir** (time `HH:MM`)
+9. **Saman** *(Baharu UAT 2 — pilihan / 0 atau lebih saman)*:
+   - Numbered batch input rows starting at `1` (`No. 1`, `No. 2`, ...), where each row accepts a text `No. Saman` input matching the style of `Siasatan` field `1. No. Saman` (e.g. placeholder `Contoh: SMN-2026-00142`), plus a row remove button (`✕`).
+   - **`+ Tambah Saman`** button appends a new numbered row (`n + 1`).
+   - **CSV Import (`Import CSV`)**: Accepts `.csv` files with header `no, nombor_saman` (case-insensitive / trimmed).
+     - When non-empty saman rows already exist in the form, prompts the user to choose **Ganti Sedia Ada (Replace)** or **Tambah ke Senarai (Append)** before applying imported rows.
+     - Trims whitespace, skips blank `nombor_saman` rows, renumbers sequence `1..N` continuously, and surfaces clear validation errors for missing/invalid headers or duplicate values.
+   - Optional on submit: blank saman rows are ignored (`0` saman allowed; stored as `saman_list: string[]`).
 
 #### 2. Enforcement Operations Table (`Senarai Rekod Penguatkuasaan`)
 - Placed full-width directly below the input form
-- Displays logged enforcement operations sorted newest-first by default (`orderBy("tarikh", "desc")`), paginated at **5 operations per page** with columns: Tarikh (`↓` / `↑`, clickable to toggle sort direction), Lokasi, Jenis Operasi, Kat. Kemalangan, Tangkapan, Sita, Masa (`jam_mula`–`jam_akhir`)
+- Displays logged enforcement operations sorted newest-first by default (`orderBy("tarikh", "desc")`), paginated at **5 operations per page** with columns: Tarikh (`↓` / `↑`, clickable to toggle sort direction), Lokasi, Jenis Operasi, Kat. Kemalangan, Tangkapan, Sita, Saman (`[count] saman` + preview/tooltip), Masa (`jam_mula`–`jam_akhir`)
 - **Quota-Preserving Native Firestore Pagination**: Uses `getCountFromServer` for total operation count and `startAfter(cursor)` + `limit(5)` (`getDocs`) so Firestore reads are fired **only when the page or sort order changes**
-- **Interactive Row Edit Modal (`Kemaskini Rekod Penguatkuasaan`)**: For authorized users (`Penguatkuasaan` or `Admin`), each row highlights on hover (`cursor: pointer`) and opens an edit modal on click to update the operation in Firestore (`updateDoc`).
+- **Interactive Row Edit Modal (`Kemaskini Rekod Penguatkuasaan`)**: For authorized users (`Penguatkuasaan` or `Admin`), each row highlights on hover (`cursor: pointer`) and opens an edit modal on click (including numbered fields `1`–`9` and the `9. Saman` batch editor + CSV import) to update the operation in Firestore (`updateDoc`).
 - Includes total count badge (`[total] operasi`) and pagination controls (`← Sebelumnya`, page numbers, `Seterusnya →`)
 
 ### 4.4 Lokasi (Location & Lampiran Blackspot Management — Admin) — `/lokasi`
@@ -270,7 +282,7 @@ Allows `Admin` users to register and manage official route locations and gazette
 | Role | URL Routes | Viewable Tabs | Modifiable Tabs | Permissions & Restrictions |
 |---|---|---|---|---|
 | **Guest (Awam)** | `/smart-traffic` | `Dashboard Utama` only | *None* | Read-only spectator mode. Siasatan, Penguatkuasaan, and Lokasi tabs hidden. |
-| **Siasatan** | `/smart-traffic`, `/smart-traffic/siasatan`, `/smart-traffic/penguatkuasaan` | `Dashboard Utama`, `Siasatan`, `Penguatkuasaan` | `Dashboard` (view filters), `Siasatan` (input, submit & edit records) | Can create & edit investigation records; can view `Penguatkuasaan` in read-only mode (`Mod Paparan Sahaja (Siasatan)`). Restricted from viewing or modifying `Lokasi`. |
+| **Siasatan** | `/smart-traffic`, `/smart-traffic/siasatan`, `/smart-traffic/penguatkuasaan` | `Dashboard Utama`, `Siasatan`, `Penguatkuasaan` | `Dashboard` (view filters), `Siasatan` (input, submit & edit records), `locations` (create/update/delete via Siasatan modal) | Can create & edit investigation records; can create/update/delete `locations` in Firestore (via Siasatan location modal); can view `Penguatkuasaan` in read-only mode (`Mod Paparan Sahaja (Siasatan)`). Restricted from accessing the `/lokasi` admin tab. |
 | **Penguatkuasaan** | `/smart-traffic`, `/smart-traffic/siasatan`, `/smart-traffic/penguatkuasaan` | `Dashboard Utama`, `Siasatan`, `Penguatkuasaan` | `Dashboard` (view filters), `Penguatkuasaan` (input, submit & edit ops) | Can create & edit enforcement operations; can view `Siasatan` in read-only mode (`Mod Paparan Sahaja (Penguatkuasaan)`). Restricted from viewing or modifying `Lokasi`. |
 | **Admin** | All routes (`/`, `/siasatan`, `/penguatkuasaan`, `/lokasi`) | **All 4 tabs** (`Dashboard`, `Siasatan`, `Penguatkuasaan`, `Lokasi`) | **All 4 tabs** (`Dashboard`, `Siasatan`, `Penguatkuasaan`, `Lokasi`) | **Super Admin**: Full view, create, and edit access across `Siasatan`, `Penguatkuasaan`, and `Lokasi` (master locations, blackspots, and system accounts). |
 
@@ -437,16 +449,16 @@ smarttraffic-db/
 │       ├── nama: string          # 4. Nama
 │       ├── umur: number          # 5. Umur (numerical)
 │       ├── alamat: string        # 6. Alamat
-│       ├── tempat_kemalangan: string # 7. "Lebuh Raya" | "Persekutuan" | "Negeri" | "Lain-lain"
-│       ├── location_id: string   # 8. Deterministic ref to locations/{locationId} (e.g. "km31-jalan-ipoh-lumut")
+│       ├── tempat_kemalangan: string # Auto-derived from selected location.road_type ("Lebuh Raya" | "Persekutuan" | "Negeri" | "Lain-lain")
+│       ├── location_id: string   # 7. Deterministic ref to locations/{locationId} (e.g. "km31-jalan-ipoh-lumut")
 │       ├── location_name: string # Denormalized location name (e.g. "KM31 JALAN IPOH-LUMUT (L/ISYARAT SIDEC)")
-│       ├── tarikh_kemalangan: string # 9. YYYY-MM-DD
-│       ├── waktu_kejadian: string    # 10. HH:MM
-│       ├── kategori_kenderaan: string # 11. "Motosikal" | "Kereta" | "MPV / SUV" | "Van" | "Bas" | "Lori / Kenderaan Berat" | "Basikal" | "Lain-lain"
-│       ├── kesalahan: string     # 12. "Kelajuan" | "Tidak peka keadaan sekeliling" | "Gagal patuh isyarat" | "Keadaan jalan" | "Langgar binatang" | "Faktor kenderaan" | "Lain-lain"
-│       ├── melibatkan_binatang: boolean # 13. true ("Ya") | false ("Tidak")
+│       ├── tarikh_kemalangan: string # 8. YYYY-MM-DD
+│       ├── waktu_kejadian: string    # 9. HH:MM
+│       ├── kategori_kenderaan: string # 10. "Motosikal" | "Kereta" | "MPV / SUV" | "Van" | "Bas" | "Lori / Kenderaan Berat" | "Basikal" | "Lain-lain"
+│       ├── kesalahan: string     # 11. "Kelajuan" | "Tidak peka keadaan sekeliling" | "Gagal patuh isyarat" | "Keadaan jalan" | "Langgar binatang" | "Faktor kenderaan" | "Lain-lain"
+│       ├── melibatkan_binatang: boolean # 12. true ("Ya") | false ("Tidak")
 │       ├── jenis_binatang: string | null # "Kerbau" | "Lembu" | "Babi" | "Lain-lain" | null
-│       ├── jenis_kemalangan: string # 14. "Maut" | "Cedera parah" | "Cedera ringan" | "Rosak sahaja"
+│       ├── jenis_kemalangan: string # 13. "Maut" | "Cedera parah" | "Cedera ringan" | "Rosak sahaja"
 │       ├── maut: boolean         # Derived: true when jenis_kemalangan == "Maut", false otherwise
 │       ├── bilangan_maut: number # 0 when maut=false, >=1 when maut=true
 │       └── created_at: timestamp
@@ -454,14 +466,15 @@ smarttraffic-db/
 ├── penguatkuasaan/               # Enforcement operation records (from Penguatkuasaan tab)
 │   └── {opId}/
 │       ├── tarikh: string        # 1. YYYY-MM-DD
-│       ├── location_id: string   # Ref to locations/{locationId} (e.g. "km31-jalan-ipoh-lumut")
+│       ├── location_id: string   # 2. Ref to locations/{locationId} (e.g. "km31-jalan-ipoh-lumut")
 │       ├── location_name: string # Denormalized location name
-│       ├── kategori_kemalangan: string # 2. "Maut" | "Parah" | "Ringan" | "Rosak sahaja" | "Bukan kemalangan"
-│       ├── jenis_operasi: string # 3. "Pematuhan" | "Perdagangan" | "Motosikal" | "Mabuk" | "Bersepadu"
-│       ├── tangkapan: number     # 4. Number of arrests
-│       ├── sita: number          # 5. Number of vehicle seizures
-│       ├── jam_mula: string      # 6. HH:MM
-│       ├── jam_akhir: string     # 7. HH:MM
+│       ├── kategori_kemalangan: string # 3. "Maut" | "Parah" | "Ringan" | "Rosak sahaja" | "Bukan kemalangan"
+│       ├── jenis_operasi: string # 4. "Pematuhan" | "Perdagangan" | "Motosikal" | "Mabuk" | "Bersepadu"
+│       ├── tangkapan: number     # 5. Number of arrests
+│       ├── sita: number          # 6. Number of vehicle seizures
+│       ├── jam_mula: string      # 7. HH:MM
+│       ├── jam_akhir: string     # 8. HH:MM
+│       ├── saman_list: string[]  # 9. Optional array of saman numbers (e.g. ["SMN-2026-001", ...]; [] if none)
 │       └── created_at: timestamp
 │
 └── factors/                      # Contributing factor data
@@ -527,6 +540,7 @@ Unauthenticated requests to `/smart-traffic/siasatan`, `/smart-traffic/penguatku
 
 ```
 scripts/
+├── load-env.mjs                  # Shared .env.local loader & env-based Firebase config helper
 ├── onboard-user.mjs              # CLI script: creates Auth user + Firestore users/{uid} doc, outputs password
 └── seed-firestore.mjs            # CLI script: seeds locations, siasatan, penguatkuasaan & period baselines
 
@@ -570,15 +584,16 @@ src/
 │   ├── locations/
 │   │   ├── LocationRisk.jsx      # Risk score panel with on-demand AI Faktor & Cadangan + blackspot badge
 │   │   ├── HotspotList.jsx       # Priority-sorted location list
-│   │   ├── LokasiForm.jsx        # 7-field Admin location & blackspot registration form (with lat/lng)
+│   │   ├── LokasiForm.jsx        # Reusable location & blackspot registration form (supports inline card & modal variants)
 │   │   └── LokasiTable.jsx       # Locations master table with active/inactive toggle
 │   ├── siasatan/
-│   │   ├── SiasatanForm.jsx      # 14-field investigation input form
+│   │   ├── SiasatanForm.jsx      # 13-field investigation input form + inline location modal & read-only location fields
 │   │   ├── SiasatanAggregation.jsx # 9 Elemen Data Kemalangan live aggregation table
-│   │   └── SiasatanTable.jsx     # Investigation records table
+│   │   └── SiasatanTable.jsx     # Investigation records table & edit modal
 │   ├── penguatkuasaan/
-│   │   ├── PenguatkuasaanForm.jsx # Enforcement operation input form
-│   │   └── PenguatkuasaanTable.jsx # Enforcement operations table
+│   │   ├── PenguatkuasaanForm.jsx # 9-field enforcement operation input form (with batch Saman & CSV import)
+│   │   ├── SamanBatchInput.jsx   # Reusable numbered batch saman input + CSV import helper (used by form & edit modal)
+│   │   └── PenguatkuasaanTable.jsx # Enforcement operations table & edit modal
 │   ├── nav/
 │   │   ├── TabNav.jsx            # 4-tab navigation
 │   │   └── PeriodSelector.jsx    # Weekly/Monthly/Quarterly dropdown
@@ -653,24 +668,18 @@ src/
 
 ### Phase 5 — Polish & Deploy (UAT Round 1 Release) ✅ COMPLETED (2026-11-14)
 1. **CSV Export & Login Screen Nav Cleanup**:
-   - Keep `↓ Eksport CSV` scoped to the Dashboard Utama summary (active period cases, fatal cases, deaths, top hotspot, and dynamic risk score).
-   - Hide the tab navigation bar (`Dashboard Utama` tab button and `↓ Eksport CSV` button) in `Layout.jsx` when on `/smart-traffic/login`.
+   - Keep `↓ Eksport CSV` scoped to `Dashboard Utama` only (active period cases, fatal cases, deaths, top hotspot, and dynamic risk score aligned with Dashboard formula).
+   - Hide the entire tab navigation bar (`Dashboard Utama` tab button, period controls, and `↓ Eksport CSV` button) in `Layout.jsx` when on `/smart-traffic/login`.
 2. **Semakan teks & label Bahasa Melayu** (PDRM & BSPT standard)
 3. **Responsive design** (980px, 550px breakpoints)
 4. **Environment Secrets Consolidation & GitHub Actions Workflow (`.github/workflows/deploy.yml`)**:
-   - Move all hardcoded Firebase configuration fallback values out of `src/fb_cloud_firestore.js` into `.env.local` (for local development) and remove hardcoded credentials from `src/fb_cloud_firestore.js`.
-   - Ensure all **9 secrets** are configured in **GitHub Repository Secrets** and passed in the `Build` step `env:` block of `.github/workflows/deploy.yml` (along with `VITE_APP_ENV: prod`):
-     1. `VITE_FIREBASE_API_KEY`
-     2. `VITE_FIREBASE_AUTH_DOMAIN` (`smart-traffic-93b67.firebaseapp.com`)
-     3. `VITE_FIREBASE_PROJECT_ID` (`smart-traffic-93b67`)
-     4. `VITE_FIREBASE_STORAGE_BUCKET` (`smart-traffic-93b67.firebasestorage.app`)
-     5. `VITE_FIREBASE_MESSAGING_SENDER_ID` (`486263542637`)
-     6. `VITE_FIREBASE_APP_ID` (`1:486263542637:web:b4c6b04678bb583381c064`)
-     7. `VITE_FIREBASE_MEASUREMENT_ID` (`G-7BFWYR207V`)
-     8. `VITE_GOOGLE_MAPS_API_KEY` (already in GitHub Secrets; add to `deploy.yml` `env:`)
-     9. `VITE_GEMINI_API_KEY` (already in GitHub Secrets; add to `deploy.yml` `env:`)
-5. **Remove prototype HTML file** from production build
-6. **Deploy UAT Round 1 build to GitHub Pages only** (`https://basyir64.github.io/smart-traffic/`)
+   - Removed all hardcoded Firebase configuration fallback values from `src/fb_cloud_firestore.js`, `scripts/onboard-user.mjs`, and `scripts/seed-firestore.mjs` (via shared `scripts/load-env.mjs`) and consolidated them into `.env.local`.
+   - Stripped passwords from `src/data/seedUsers.js` and moved seed passwords into `.env.local` (`SEED_PASSWORD_*`) so `seedUsers.js` stays tracked in Git without exposing credentials.
+   - Configured `.github/workflows/deploy.yml` (Node 24) to pass `VITE_APP_ENV: prod`, `VITE_GOOGLE_MAPS_API_KEY`, `VITE_GEMINI_API_KEY`, and all 7 `VITE_FIREBASE_*` secrets during the `Build` step.
+5. **SPA Deep-Link Redirect & Prototype Exclusion**:
+   - Updated `public/404.html` base path to `/smart-traffic` and added `SpaRedirectHandler` in `src/index.jsx` for GitHub Pages refresh support.
+   - Excluded `SMART_TRAFFIC_AI_Dashboard_Prototype.html` from the Vite `dist/` production build while retaining it in the repository for reference.
+6. **Deploy UAT Round 1 build to GitHub Pages** (`https://basyir64.github.io/smart-traffic/`)
 
 ---
 
@@ -681,6 +690,116 @@ To be prioritized and implemented after the conclusion of the First Round of UAT
 1. **Gemini Patrol Briefing & Order Generator (`[📄 Jana Arahan Penugasan Operasi]`)**: Automated generation of police-standard operational orders in the `Penguatkuasaan` tab, complete with copy-to-clipboard functionality for WhatsApp/memo distribution.
 2. **Gemini 9-Element IPRS Multi-Variable Intelligence Summarizer (`[🔍 Analisis Korelasi 9 Elemen]`)**: Executive cross-tab correlation analysis in the `Siasatan` tab providing 3-bullet intelligence summaries for the OCPD.
 3. **Natural Language Traffic Inquiry ("Tanya AI BSPT")**: Interactive command drawer for station commanders to ask real-time questions in natural Malay against the live incident database.
+
+---
+
+### UAT Round 2 — Development Phases
+
+> [!IMPORTANT]
+> **Second Round of User Acceptance Testing (UAT 2) Scope**:
+> Tracks new and changing operational requirements discovered during UAT 1.
+> Each phase below is specified for direct consumption by implementing agents. **Do not begin implementation until reviewed and approved by the project owner.**
+
+#### UAT 2 · Phase 1 — Inline Location Registration in Siasatan & Batch Saman Input in Penguatkuasaan ⏳ PENDING REVIEW
+
+##### 1. Reusable `LokasiForm` Component & Siasatan Inline Location Creation + Dynamic Read-Only Location Fields
+1. **Abstract & Reuse `LokasiForm` (`src/components/locations/LokasiForm.jsx`)**:
+   - Refactor `LokasiForm` so the exact same form fields, validation, reset behavior, and styling (`var(--color-surface)`, `var(--color-nav-bg)`, `var(--color-border-light)`, `var(--color-accent)`) are reusable across both:
+     - **`Lokasi` tab (`src/views/Lokasi.jsx`)**: Inline card layout (`variant="card"`, preserving existing `Borang Daftar Lokasi & Lampiran Blackspot` header and `Akses Admin` chip).
+     - **`Siasatan` tab (`src/components/siasatan/SiasatanForm.jsx`)**: Modal layout (`variant="modal"`, triggered from field `7. Lokasi Hotspot / Jalan`) with `onSuccess(createdLocation)` and `onCancel()` callbacks.
+   - Ensure form field IDs/radio `name` attributes do not collide if rendered in a modal (e.g., use `useId()` or an optional `idPrefix` prop).
+2. **RBAC & `firestore.rules` Updates (`locations` Collection)**:
+   - Update `firestore.rules` for `/locations/{locationId}` so both **`Siasatan`** and **`Admin`** roles have `create, update, delete` permissions:
+     ```
+     allow create: if !exists(/databases/$(database)/documents/locations/km31-jalan-ipoh-lumut)
+       || hasRole('Siasatan')
+       || hasRole('Admin');
+     allow update, delete: if hasRole('Siasatan') || hasRole('Admin');
+     ```
+   - Keep `/smart-traffic/lokasi` route/tab navigation restricted to `Admin` (`canModifyLokasi` in `auth-context.jsx` continues gating the `Lokasi` tab), while allowing `canModifySiasatan` users (`Siasatan` & `Admin`) to open the `+ Tambah Lokasi` modal inside `SiasatanForm`.
+   - **Slug Collision Guard in `useLocations.js` (`addLocation`)**: Currently `addLocation` derives `docId` from `${km}-${route}` and calls `setDoc(...)`, which could silently overwrite an existing location if a user enters the same `km` + `route` with a different `landmark`. Check `getDoc(doc(db, "locations", baseId))` before writing and append a short unique suffix (or include `landmark` in slug / surface a clear conflict message) so existing locations are never unintentionally overwritten.
+   - Wire `addLocation` from `useLocations()` in `src/views/Siasatan.jsx` into `SiasatanForm`.
+3. **Refactor `SiasatanForm.jsx` & `SiasatanTable.jsx` Edit Modal**:
+   - **Remove Field 7 (`Tempat Kemalangan (Jenis Jalan)`)** from both `SiasatanForm.jsx` and `SiasatanTable.jsx`'s `Kemaskini Rekod Siasatan` edit modal.
+   - **Renumber Fields Sequentially (`1`–`13`)** in both `SiasatanForm` and `SiasatanTable` Edit Modal to prevent numbering mismatch:
+     - `1. No. Saman`
+     - `2. No. Kenderaan`
+     - `3. No. IC`
+     - `4. Nama`
+     - `5. Umur`
+     - `6. Alamat`
+     - `7. Lokasi Hotspot / Jalan` *(was 8)* — includes an inline **`+ Tambah Lokasi`** button alongside the `<select>` dropdown.
+     - `8. Tarikh Kemalangan` *(was 9)*
+     - `9. Waktu Kejadian (HH:MM)` *(was 10)*
+     - `10. Kategori Kenderaan` *(was 11)*
+     - `11. Kesalahan (Punca Kemalangan)` *(was 12)*
+     - `12. Melibatkan Binatang` *(was 13)* (+ conditional `Jenis Binatang`)
+     - `13. Jenis Kemalangan` *(was 14)* (+ conditional `Bilangan Kematian (Nyawa)`)
+   - **Render Uneditable Dynamic Location Preview Fields**:
+     - Immediately below/adjacent to `7. Lokasi Hotspot / Jalan`, render two **read-only / disabled** fields (`readOnly` / styled muted non-editable inputs matching the dark theme) that dynamically populate whenever `locationId` changes:
+       - **`Nama Jalan`** — populated from `selectedLocation.route` *(field 1 `Nama Laluan` of the Lokasi form)*
+       - **`Jenis Jalan`** — populated from `selectedLocation.road_type` *(field 4 `Jenis Jalan` of the Lokasi form)*
+     - Keep these two preview fields unnumbered (or clearly labelled as auto-populated location attributes) so the main form numbering `1`–`13` remains clean and unambiguous even if Lokasi form field numbering changes in the future.
+     - Mirror these same two uneditable preview fields in `SiasatanTable.jsx`'s `Kemaskini Rekod Siasatan` edit modal.
+   - **Modal Post-Creation Selection**:
+     - When `LokasiForm` inside the Siasatan modal succeeds (`onSuccess(created)`):
+       - Close the modal.
+       - If `created.active` is `true`, automatically select `created.id` in `7. Lokasi Hotspot / Jalan` (which updates the read-only `Nama Jalan` and `Jenis Jalan` fields).
+       - If `created.active` is `false`, display a clear Bahasa Melayu status notice explaining that the location was saved as `Tidak Aktif` and therefore does not appear in the active dropdown.
+   - **Firestore Persistence Compatibility**:
+     - Continue auto-deriving and saving `tempat_kemalangan: selectedLoc?.road_type || "Persekutuan"` on `siasatan` documents during `addSiasatan` and `updateSiasatan` so `SiasatanAggregation.jsx` (Element `4. Jenis jalan`), `SiasatanTable.jsx` (`Tempat` column), and `LocationRisk.jsx` continue operating with zero schema regression.
+
+##### 2. Penguatkuasaan Field Numbering Fix & Field `9. Saman` (Numbered Batch Input + CSV Import)
+1. **Fix Missing Numbering & Shift Fields (`1`–`9`) in `PenguatkuasaanForm.jsx` & `PenguatkuasaanTable.jsx` Edit Modal**:
+   - Fix the existing bug where `Lokasi Hotspot / Jalan` had no number; renumber all fields sequentially:
+     - `1. Tarikh`
+     - `2. Lokasi Hotspot / Jalan` *(previously unnumbered)*
+     - `3. Kategori Kemalangan` *(was 2)*
+     - `4. Jenis Operasi` *(was 3)*
+     - `5. Tangkapan` *(was 4)*
+     - `6. Sita` *(was 5)*
+     - `7. Jam Mula (HH:MM)` *(was 6)*
+     - `8. Jam Akhir (HH:MM)` *(was 7)*
+     - `9. Saman` *(new field)*
+2. **Build Reusable `SamanBatchInput` Component (`src/components/penguatkuasaan/SamanBatchInput.jsx`)**:
+   - Used by both `PenguatkuasaanForm.jsx` and `PenguatkuasaanTable.jsx`'s `Kemaskini Rekod Penguatkuasaan` edit modal (spanning full grid width `col-span-full` for clean row alignment).
+   - **Numbered Dynamic Input Rows**:
+     - Starts with row `1` (e.g., `1.` badge + text input matching `SiasatanForm` field `1. No. Saman` styling and placeholder `Contoh: SMN-2026-00142`).
+     - **`+ Tambah Saman`** button appends a new row numbered `n + 1`.
+     - Per-row **remove button (`✕`)** deletes a row and automatically renumbers remaining rows `1..N` (if the last row is removed, either resets to 1 empty row `1` or allows `0` rows).
+   - **CSV Import (`no, nombor_saman`)**:
+     - Include an **`Import CSV`** button (hidden `<input type="file" accept=".csv,text/csv" />`) plus a concise format hint (`Format CSV: no, nombor_saman`).
+     - Parse CSV cleanly (handle CRLF/LF, optional surrounding quotes, BOM, header whitespace/casing):
+       - Validate header contains `no` and `nombor_saman` (report clear Bahasa Melayu error if missing/invalid).
+       - Trim each `nombor_saman`, skip rows with empty `nombor_saman`, and sort/normalize sequence numbers to `1..N`.
+       - Detect and warn/deduplicate or reject duplicate `nombor_saman` entries cleanly.
+     - **Existing Non-Empty Rows Prompt (Replace vs Append)**:
+       - If the form currently contains only blank row(s), populate immediately from the parsed CSV.
+       - If at least one non-empty `nombor_saman` row already exists in the form, prompt the user with a clear modal/inline confirmation choice before applying:
+         - **`Ganti Senarai Sedia Ada` (Replace)** — replaces current rows with imported CSV rows (`1..N`).
+         - **`Tambah ke Senarai` (Append)** — appends imported CSV rows after existing non-empty rows and renumbers `1..N`.
+         - **`Batal` (Cancel)** — aborts import without modifying current rows.
+     - Reset the `<input type="file">` value after each import attempt so the same file can be re-selected if needed.
+3. **Firestore Schema, Persistence Hook & Table Display**:
+   - **Optional Validation (`0` or more saman)**: On submit/save, trim all entries and filter out empty rows (`samanList = rows.map(r => r.trim()).filter(Boolean)`). Empty saman lists (`[]`) are valid.
+   - **Firestore Data Model (`penguatkuasaan/{opId}`)**:
+     - Store `saman_list: string[]` (array of non-empty saman strings; `[]` when none).
+   - **Hook & Seed Updates**:
+     - Update `normalizeOperation` in `src/hooks/usePenguatkuasaan.js` to normalize `saman_list: Array.isArray(raw.saman_list) ? raw.saman_list.map(s => String(s || "").trim()).filter(Boolean) : []`.
+     - Update `src/data/seedPenguatkuasaan.js` with optional `saman_list` arrays on seed records (defaulting safely to `[]` if omitted).
+   - **Table & Edit Modal Updates (`PenguatkuasaanTable.jsx`)**:
+     - Add a `Saman` column in `Senarai Rekod Penguatkuasaan` displaying the count/summary (e.g., `0` or `[count] saman` with hover/inline preview of saman numbers).
+     - Load and edit `saman_list` inside `Kemaskini Rekod Penguatkuasaan` modal using `SamanBatchInput`, persisting updates via `updatePenguatkuasaan`.
+
+##### 3. Verification Checklist (for Implementing Agent)
+- Confirm `npm run build` succeeds with zero errors/warnings.
+- Verify `firestore.rules` allows `Siasatan` and `Admin` to `create`, `update`, and `delete` `/locations/{locationId}` while `Penguatkuasaan` and unauthenticated users remain denied.
+- Verify `SiasatanForm` and `SiasatanTable` Edit Modal:
+  - Field numbering is strictly `1`–`13` with no `Tempat Kemalangan` dropdown.
+  - Selecting or creating a location updates uneditable `Nama Jalan` (`route`) and `Jenis Jalan` (`road_type`) immediately, and `tempat_kemalangan` persists accurately to Firestore (`9 Elemen Data Kemalangan` Element 4 tallies correctly).
+- Verify `PenguatkuasaanForm` and `PenguatkuasaanTable`:
+  - Field numbering is strictly `1`–`9` (including `2. Lokasi Hotspot / Jalan` and `9. Saman`).
+  - Batch `+ Tambah Saman`, row removal, CSV import (`no, nombor_saman`) with Replace/Append confirmation on non-empty rows, optional empty submission, and table/edit modal persistence all work end-to-end.
 
 ---
 
