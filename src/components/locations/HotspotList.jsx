@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { isHotspotLocation } from "../../utils/locations";
 import Chip from "../shared/Chip";
 
 export const HOTSPOT_PAGE_SIZE = 5;
@@ -42,6 +43,7 @@ export default function HotspotList({
             const rankNumber = startIndex + idx + 1;
             const isSelected = loc.id === selectedLocationId;
             const isBlackspot = Boolean(loc.is_blackspot);
+            const isHotspot = isHotspotLocation(loc);
             const risk = loc.risk ?? loc.risk_score ?? 70;
             const cases = loc.cases ?? 0;
             const opsCount = loc.ops_count ?? 0;
@@ -62,6 +64,7 @@ export default function HotspotList({
                   <b className="text-[13px] block">
                     {rankNumber}. {loc.name}
                     {isBlackspot ? " ⚫" : ""}
+                    {isHotspot ? " 🔥" : ""}
                   </b>
                   <span className="text-[var(--color-text-muted)] text-xs">
                     {cases} kes · {peakTime}

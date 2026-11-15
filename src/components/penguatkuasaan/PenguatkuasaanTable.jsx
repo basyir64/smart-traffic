@@ -12,6 +12,10 @@ import {
   summarizeSamanCategories,
   validateSamanRows,
 } from "../../utils/saman";
+import {
+  CUSTOM_LOCATION_ID,
+  resolvePenguatkuasaanLocation,
+} from "../../utils/locations";
 
 export default function PenguatkuasaanTable({
   operations = [],
@@ -50,13 +54,19 @@ export default function PenguatkuasaanTable({
     [allLocations, activeLocations]
   );
 
+  const isModalCustomLocation = formState?.location_id === CUSTOM_LOCATION_ID;
+
   const selectedModalLocation = useMemo(() => {
-    if (!formState?.location_id) return null;
+    if (!formState?.location_id || formState.location_id === CUSTOM_LOCATION_ID) {
+      return null;
+    }
     return locationPool.find((l) => l.id === formState.location_id) || null;
   }, [locationPool, formState]);
 
   const modalLocationMissingFromActive = useMemo(() => {
-    if (!formState?.location_id) return false;
+    if (!formState?.location_id || formState.location_id === CUSTOM_LOCATION_ID) {
+      return false;
+    }
     return !activeLocations.some((l) => l.id === formState.location_id);
   }, [activeLocations, formState]);
 
@@ -89,10 +99,16 @@ export default function PenguatkuasaanTable({
     const samanRows = normalizedSaman.length
       ? normalizedSaman.map((item) => ({ ...item }))
       : [{ no_saman: "", kategori_saman: "" }];
+    const isCustom = Boolean(
+      op.is_custom_location || op.location_id === CUSTOM_LOCATION_ID
+    );
     const snapshot = {
       tarikh: op.tarikh || "",
-      location_id: op.location_id || activeLocations[0]?.id || "",
+      location_id: isCustom
+        ? CUSTOM_LOCATION_ID
+        : op.location_id || activeLocations[0]?.id || CUSTOM_LOCATION_ID,
       location_name: op.location_name || activeLocations[0]?.name || "",
+      custom_location: isCustom ? op.location_name || "" : "",
       kategori_kemalangan: op.kategori_kemalangan || "Maut",
       jenis_operasi: op.jenis_operasi || "Pematuhan",
       tangkapan: op.tangkapan ?? 0,
@@ -121,6 +137,21 @@ export default function PenguatkuasaanTable({
     e.preventDefault();
     if (!editingOp || !formState || !onUpdateOperation) return;
 
+    const resolvedLocation = resolvePenguatkuasaanLocation(
+      formState.location_id,
+      formState.custom_location,
+      locationPool,
+      formState.location_name
+    );
+    if (!resolvedLocation.valid) {
+      setModalError(
+        formState.location_id === CUSTOM_LOCATION_ID
+          ? "Sila nyatakan nama Lokasi Lain-lain yang sah."
+          : "Sila pilih Lokasi Hotspot / Jalan."
+      );
+      return;
+    }
+
     const hasLegacyUnset = (initialFormState?.saman_rows || []).some(
       (r) => r.kategori_saman === UNSET_SAMAN_CATEGORY
     );
@@ -137,14 +168,11 @@ export default function PenguatkuasaanTable({
     setModalError("");
     setModalSamanErrors({});
     try {
-      const selectedLoc = locationPool.find(
-        (l) => l.id === formState.location_id
-      );
-
       await onUpdateOperation(editingOp.id, {
         tarikh: formState.tarikh,
-        location_id: selectedLoc?.id || formState.location_id,
-        location_name: selectedLoc?.name || formState.location_name,
+        location_id: resolvedLocation.location_id,
+        location_name: resolvedLocation.location_name,
+        is_custom_location: resolvedLocation.is_custom_location,
         kategori_kemalangan: formState.kategori_kemalangan,
         jenis_operasi: formState.jenis_operasi,
         tangkapan: Math.max(0, parseInt(formState.tangkapan, 10) || 0),
@@ -260,7 +288,16 @@ export default function PenguatkuasaanTable({
                     }`}
                   >
                     <td className="py-3 px-2 font-semibold">{op.tarikh}</td>
-                    <td className="py-3 px-2">{op.location_name}</td>
+                    <td className="py-3 px-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span>{op.location_name || "-"}</span>
+                        {op.is_custom_location && (
+                          <span className="inline-block bg-slate-500/15 text-[var(--color-text-secondary)] border border-[var(--color-border-light)] rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
+                            Lain-lain
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="py-3 px-2">{op.jenis_operasi}</td>
                     <td className="py-3 px-2">{op.kategori_kemalangan}</td>
                     <td className="py-3 px-2">{op.tangkapan}</td>
@@ -420,9 +457,15 @@ export default function PenguatkuasaanTable({
                 </label>
                 <select
                   value={formState.location_id}
-                  onChange={(e) =>
-                    setFormState((p) => ({ ...p, location_id: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    const nextId = e.target.value;
+                    setFormState((p) => ({
+                      ...p,
+                      location_id: nextId,
+                      custom_location:
+                        nextId === CUSTOM_LOCATION_ID ? p.custom_location : "",
+                    }));
+                  }}
                   className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
                 >
                   {modalLocationMissingFromActive && (
@@ -437,7 +480,32 @@ export default function PenguatkuasaanTable({
                       {loc.is_blackspot ? " ⚫" : ""}
                     </option>
                   ))}
+                  <option value={CUSTOM_LOCATION_ID}>Lain-lain</option>
                 </select>
+                {isModalCustomLocation && (
+                  <div className="mt-1 flex flex-col gap-1">
+                    <label
+                      htmlFor="editOpLokasiLainLain"
+                      className="text-[11px] text-[var(--color-text-label)] font-semibold"
+                    >
+                      Lokasi Lain-lain (Nyatakan)
+                    </label>
+                    <input
+                      id="editOpLokasiLainLain"
+                      type="text"
+                      value={formState.custom_location || ""}
+                      onChange={(e) =>
+                        setFormState((p) => ({
+                          ...p,
+                          custom_location: e.target.value,
+                        }))
+                      }
+                      placeholder="Contoh: JALAN KAMPUNG GAJAH / KM12 JALAN PARIT"
+                      required
+                      className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] uppercase placeholder:normal-case focus:outline-none focus:border-[var(--color-accent)]"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* 3. Kategori Kemalangan */}

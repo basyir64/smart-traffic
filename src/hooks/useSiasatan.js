@@ -10,21 +10,27 @@ import {
   where,
   setDoc,
   updateDoc,
+  deleteField,
   getCountFromServer,
-  getAggregateFromServer,
-  sum,
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../fb_cloud_firestore";
 import { bootstrapFirestoreData } from "../services/bootstrapData";
 import { getPeriodQueryConstraints } from "./usePeriodData";
 import { coerceStoredSamanCategory } from "../utils/saman";
+import {
+  normalizePihakTerlibatList,
+  countVehicleCategoriesFromRecords,
+  countUniqueAgeBracketsFromRecords,
+} from "../utils/siasatan";
 
 export const SIASATAN_PAGE_SIZE = 5;
 
 export function normalizeSiasatan(raw) {
-  const no_saman = raw.no_saman || "";
+  const no_saman = String(raw.no_saman || "").trim();
   const kategori_saman = coerceStoredSamanCategory(raw.kategori_saman);
+  const no_report = String(raw.no_report || "").trim().toUpperCase();
+  const pihak_terlibat = normalizePihakTerlibatList(raw);
   const melibatkan_binatang = Boolean(raw.melibatkan_binatang);
   const jenis_kemalangan = raw.jenis_kemalangan || "Rosak sahaja";
   const maut = Boolean(raw.maut ?? jenis_kemalangan === "Maut");
@@ -36,17 +42,14 @@ export function normalizeSiasatan(raw) {
     id: raw.id || no_saman.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
     no_saman,
     kategori_saman,
-    no_kenderaan: raw.no_kenderaan || "",
-    no_ic: Number(raw.no_ic ?? 0),
-    nama: raw.nama || "",
-    umur: Number(raw.umur ?? 0),
+    no_report,
+    pihak_terlibat,
     alamat: raw.alamat || "",
     tempat_kemalangan: raw.tempat_kemalangan || "Persekutuan",
     location_id: raw.location_id || "",
     location_name: raw.location_name || "",
     tarikh_kemalangan: raw.tarikh_kemalangan || "",
     waktu_kejadian: raw.waktu_kejadian || "",
-    kategori_kenderaan: raw.kategori_kenderaan || "Motosikal",
     kesalahan: raw.kesalahan || "Kelajuan",
     melibatkan_binatang,
     jenis_binatang: melibatkan_binatang
@@ -86,21 +89,6 @@ export function useSiasatan() {
       return snapshot.data().count;
     } catch (err) {
       console.error("[useSiasatan] Error getting count:", err.message);
-      return 0;
-    }
-  }, []);
-
-  // Sum bilangan_maut using server-side aggregation
-  const sumDeathsByQuery = useCallback(async (constraints = []) => {
-    try {
-      await bootstrapFirestoreData();
-      const q = query(collection(db, "siasatan"), ...constraints);
-      const snapshot = await getAggregateFromServer(q, {
-        totalDeaths: sum("bilangan_maut"),
-      });
-      return snapshot.data().totalDeaths || 0;
-    } catch (err) {
-      console.error("[useSiasatan] Error getting sum:", err.message);
       return 0;
     }
   }, []);
@@ -237,7 +225,7 @@ export function useSiasatan() {
     return loadPage(1, true, nextOrder);
   }, [loadPage]);
 
-  // Fetch top-level summary metrics for 9-Elemen (Elements 1, 2, 3)
+  // Fetch top-level summary metrics for 9-Elemen (Elements 1, 2, 3, plus Element 6 & Element 7 totals)
   const loadSummaryMetrics = useCallback(
     async (period = "all") => {
       await bootstrapFirestoreData();
@@ -246,29 +234,21 @@ export function useSiasatan() {
         period
       );
 
-      // When period === 'all', use pure server-side count & sum queries (zero document reads)
-      if (period === "all") {
-        const [totalCases, fatalCases, totalDeaths, animalCases] =
-          await Promise.all([
-            countAllSiasatan([]),
-            countAllSiasatan([where("maut", "==", true)]),
-            sumDeathsByQuery([]),
-            countAllSiasatan([where("melibatkan_binatang", "==", true)]),
-          ]);
-        return { totalCases, fatalCases, totalDeaths, animalCases };
-      }
-
-      // With single-field date range constraints, getCountFromServer & getAggregateFromServer work for totalCases & totalDeaths
-      const [totalCases, totalDeaths, docs] = await Promise.all([
-        countAllSiasatan(constraints),
-        sumDeathsByQuery(constraints),
-        loadByQuery(constraints),
-      ]);
+      const docs = await loadByQuery(constraints);
+      const totalCases = docs.length;
       const fatalCases = docs.filter((r) => r.maut).length;
+      const totalDeaths = docs.reduce(
+        (sumDeaths, r) => sumDeaths + (r.maut ? r.bilangan_maut : 0),
+        0
+      );
       const animalCases = docs.filter((r) => r.melibatkan_binatang).length;
-      return { totalCases, fatalCases, totalDeaths, animalCases };
+      const totalVehicles = docs.reduce(
+        (sumVehicles, r) => sumVehicles + normalizePihakTerlibatList(r).length,
+        0
+      );
+      return { totalCases, fatalCases, totalDeaths, animalCases, totalVehicles };
     },
-    [countAllSiasatan, sumDeathsByQuery, loadByQuery]
+    [loadByQuery]
   );
 
   // On-demand Firestore fetch for a specific 9-Elemen parent item when expanded
@@ -305,24 +285,6 @@ export function useSiasatan() {
             }))
           );
         }
-        if (elementNumber === 7) {
-          const cats = [
-            "Motosikal",
-            "Kereta",
-            "MPV / SUV",
-            "Van",
-            "Bas",
-            "Lori / Kenderaan Berat",
-            "Basikal",
-            "Lain-lain",
-          ];
-          return Promise.all(
-            cats.map(async (cat) => ({
-              label: `- ${cat}`,
-              value: `${await countAllSiasatan([where("kategori_kenderaan", "==", cat)])} kes`,
-            }))
-          );
-        }
         if (elementNumber === 9) {
           const faults = [
             "Kelajuan",
@@ -353,11 +315,6 @@ export function useSiasatan() {
         if (parts.length < 2) return false;
         const m = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
         return !isNaN(m) && m >= minMin && m <= maxMin;
-      };
-
-      const isInAgeBucket = (age, minA, maxA) => {
-        const n = Number(age);
-        return !isNaN(n) && n >= minA && n <= maxA;
       };
 
       switch (elementNumber) {
@@ -427,47 +384,9 @@ export function useSiasatan() {
             },
           ];
         case 7:
-          return [
-            "Motosikal",
-            "Kereta",
-            "MPV / SUV",
-            "Van",
-            "Bas",
-            "Lori / Kenderaan Berat",
-            "Basikal",
-            "Lain-lain",
-          ].map((cat) => ({
-            label: `- ${cat}`,
-            value: `${countWhere((r) => r.kategori_kenderaan === cat)} kes`,
-          }));
+          return countVehicleCategoriesFromRecords(docs);
         case 8:
-          return [
-            ["00-05", 0, 5],
-            ["06-10", 6, 10],
-            ["11-15", 11, 15],
-            ["16-20", 16, 20],
-            ["21-25", 21, 25],
-            ["26-30", 26, 30],
-            ["31-35", 31, 35],
-            ["36-40", 36, 40],
-            ["41-45", 41, 45],
-            ["46-50", 46, 50],
-            ["51-55", 51, 55],
-            ["56-60", 56, 60],
-            ["61-65", 61, 65],
-            ["66-70", 66, 70],
-            ["71-75", 71, 75],
-          ]
-            .map(([rangeLabel, minA, maxA]) => ({
-              label: `- ${rangeLabel}`,
-              value: `${countWhere((r) => isInAgeBucket(r.umur, minA, maxA))} kes`,
-            }))
-            .concat([
-              {
-                label: "- >75",
-                value: `${countWhere((r) => !isNaN(Number(r.umur)) && Number(r.umur) > 75)} kes`,
-              },
-            ]);
+          return countUniqueAgeBracketsFromRecords(docs);
         case 9:
           return [
             "Kelajuan",
@@ -523,6 +442,11 @@ export function useSiasatan() {
       const { id: docId, ...docFields } = normalized;
       await updateDoc(doc(db, "siasatan", docId), {
         ...docFields,
+        no_kenderaan: deleteField(),
+        no_ic: deleteField(),
+        nama: deleteField(),
+        umur: deleteField(),
+        kategori_kenderaan: deleteField(),
         updated_at: serverTimestamp(),
       });
 

@@ -19,6 +19,7 @@ export default function SiasatanAggregation({
     fatalCases: 0,
     totalDeaths: 0,
     animalCases: 0,
+    totalVehicles: 0,
   });
   const [loadingSummary, setLoadingSummary] = useState(true);
 
@@ -90,7 +91,7 @@ export default function SiasatanAggregation({
       return loadingSummary ? "..." : `${summary.animalCases} kes`;
     }
     if (elementNumber === 7) {
-      return loadingSummary ? "..." : `${summary.totalCases} kes`;
+      return loadingSummary ? "..." : `${summary.totalVehicles} kenderaan`;
     }
     return "";
   };

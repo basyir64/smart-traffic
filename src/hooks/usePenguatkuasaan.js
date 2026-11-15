@@ -16,17 +16,25 @@ import { db } from "../fb_cloud_firestore";
 import { bootstrapFirestoreData } from "../services/bootstrapData";
 import { getPeriodQueryConstraints } from "./usePeriodData";
 import { normalizeSamanList } from "../utils/saman";
+import { CUSTOM_LOCATION_ID } from "../utils/locations";
 
 export const PENGUATKUASAAN_PAGE_SIZE = 5;
 
 export function normalizeOperation(raw) {
   const saman_list = normalizeSamanList(raw.saman_list);
+  const location_id = raw.location_id || "";
+  const is_custom_location = Boolean(
+    raw.is_custom_location || location_id === CUSTOM_LOCATION_ID
+  );
 
   return {
     id: raw.id || `op-${Date.now()}`,
     tarikh: raw.tarikh || "",
-    location_id: raw.location_id || "",
-    location_name: raw.location_name || "",
+    location_id,
+    location_name: is_custom_location
+      ? String(raw.location_name || "").trim().toUpperCase()
+      : raw.location_name || "",
+    is_custom_location,
     kategori_kemalangan: raw.kategori_kemalangan || "Maut",
     jenis_operasi: raw.jenis_operasi || "Pematuhan",
     tangkapan: Math.max(0, Number(raw.tangkapan ?? 0)),

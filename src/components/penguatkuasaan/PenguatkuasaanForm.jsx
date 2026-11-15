@@ -3,6 +3,10 @@ import Chip from "../shared/Chip";
 import SamanBatchInput from "./SamanBatchInput";
 import { useRegisterUnsavedForm } from "../../hooks/useUnsavedChanges";
 import { validateSamanRows } from "../../utils/saman";
+import {
+  CUSTOM_LOCATION_ID,
+  resolvePenguatkuasaanLocation,
+} from "../../utils/locations";
 
 export default function PenguatkuasaanForm({
   activeLocations = [],
@@ -10,6 +14,7 @@ export default function PenguatkuasaanForm({
 }) {
   const [tarikh, setTarikh] = useState("");
   const [locationId, setLocationId] = useState("");
+  const [customLocation, setCustomLocation] = useState("");
   const [kategoriKemalangan, setKategoriKemalangan] = useState("Maut");
   const [jenisOperasi, setJenisOperasi] = useState("Pematuhan");
   const [tangkapan, setTangkapan] = useState(0);
@@ -26,18 +31,25 @@ export default function PenguatkuasaanForm({
   );
   const [submitting, setSubmitting] = useState(false);
 
+  const defaultLocationId = activeLocations[0]?.id || CUSTOM_LOCATION_ID;
+
   const effectiveLocationId = useMemo(() => {
+    if (locationId === CUSTOM_LOCATION_ID) {
+      return CUSTOM_LOCATION_ID;
+    }
     if (locationId && activeLocations.some((l) => l.id === locationId)) {
       return locationId;
     }
-    return activeLocations[0]?.id || "";
-  }, [activeLocations, locationId]);
+    return defaultLocationId;
+  }, [activeLocations, locationId, defaultLocationId]);
 
-  const defaultLocationId = activeLocations[0]?.id || "";
+  const isCustomSelected = effectiveLocationId === CUSTOM_LOCATION_ID;
+
   const isDirty = useMemo(
     () =>
       tarikh !== "" ||
       effectiveLocationId !== defaultLocationId ||
+      (isCustomSelected && customLocation !== "") ||
       kategoriKemalangan !== "Maut" ||
       jenisOperasi !== "Pematuhan" ||
       String(tangkapan) !== "0" ||
@@ -50,6 +62,8 @@ export default function PenguatkuasaanForm({
       tarikh,
       effectiveLocationId,
       defaultLocationId,
+      isCustomSelected,
+      customLocation,
       kategoriKemalangan,
       jenisOperasi,
       tangkapan,
@@ -68,7 +82,8 @@ export default function PenguatkuasaanForm({
 
   const resetFields = () => {
     setTarikh("");
-    setLocationId(activeLocations[0]?.id || "");
+    setLocationId(activeLocations[0]?.id || CUSTOM_LOCATION_ID);
+    setCustomLocation("");
     setKategoriKemalangan("Maut");
     setJenisOperasi("Pematuhan");
     setTangkapan(0);
@@ -95,6 +110,20 @@ export default function PenguatkuasaanForm({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const resolvedLocation = resolvePenguatkuasaanLocation(
+      effectiveLocationId,
+      customLocation,
+      activeLocations
+    );
+    if (!resolvedLocation.valid) {
+      setStatusText(
+        isCustomSelected
+          ? "Ralat: Sila nyatakan nama Lokasi Lain-lain yang sah."
+          : "Ralat: Sila pilih Lokasi Hotspot / Jalan."
+      );
+      return;
+    }
+
     const samanCheck = validateSamanRows(samanRows, {
       allowUnsetForLegacy: false,
     });
@@ -108,16 +137,14 @@ export default function PenguatkuasaanForm({
     setSubmitting(true);
 
     try {
-      const selectedLoc = activeLocations.find(
-        (l) => l.id === effectiveLocationId
-      );
       const savedTarikh = tarikh;
       const samanList = samanCheck.cleanList;
 
       await onAddOperation({
         tarikh: savedTarikh,
-        location_id: selectedLoc?.id || effectiveLocationId,
-        location_name: selectedLoc?.name || "",
+        location_id: resolvedLocation.location_id,
+        location_name: resolvedLocation.location_name,
+        is_custom_location: resolvedLocation.is_custom_location,
         kategori_kemalangan: kategoriKemalangan,
         jenis_operasi: jenisOperasi,
         tangkapan: Math.max(0, parseInt(tangkapan, 10) || 0),
@@ -180,7 +207,13 @@ export default function PenguatkuasaanForm({
           <select
             id="opLokasi"
             value={effectiveLocationId}
-            onChange={(e) => setLocationId(e.target.value)}
+            onChange={(e) => {
+              const nextId = e.target.value;
+              setLocationId(nextId);
+              if (nextId !== CUSTOM_LOCATION_ID) {
+                setCustomLocation("");
+              }
+            }}
             required
             className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
           >
@@ -190,7 +223,27 @@ export default function PenguatkuasaanForm({
                 {loc.is_blackspot ? " ⚫" : ""}
               </option>
             ))}
+            <option value={CUSTOM_LOCATION_ID}>Lain-lain</option>
           </select>
+          {isCustomSelected && (
+            <div className="mt-1 flex flex-col gap-1">
+              <label
+                htmlFor="opLokasiLainLain"
+                className="text-[11px] text-[var(--color-text-label)] font-semibold"
+              >
+                Lokasi Lain-lain (Nyatakan)
+              </label>
+              <input
+                id="opLokasiLainLain"
+                type="text"
+                value={customLocation}
+                onChange={(e) => setCustomLocation(e.target.value)}
+                placeholder="Contoh: JALAN KAMPUNG GAJAH / KM12 JALAN PARIT"
+                required
+                className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] uppercase placeholder:normal-case focus:outline-none focus:border-[var(--color-accent)]"
+              />
+            </div>
+          )}
         </div>
 
         {/* 3. Kategori Kemalangan */}

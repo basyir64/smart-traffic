@@ -1,11 +1,17 @@
 import { useState, useMemo } from "react";
 import Chip from "../shared/Chip";
 import LokasiForm from "../locations/LokasiForm";
+import PihakTerlibatBatchInput from "./PihakTerlibatBatchInput";
 import { useRegisterUnsavedForm } from "../../hooks/useUnsavedChanges";
 import {
   SAMAN_CATEGORIES,
   normalizeSamanCategory,
 } from "../../utils/saman";
+import {
+  createEmptyPihakTerlibatRow,
+  isPihakTerlibatDefaultDirty,
+  validatePihakTerlibatRows,
+} from "../../utils/siasatan";
 
 export default function SiasatanForm({
   activeLocations = [],
@@ -14,15 +20,15 @@ export default function SiasatanForm({
 }) {
   const [noSaman, setNoSaman] = useState("");
   const [kategoriSaman, setKategoriSaman] = useState("");
-  const [noKenderaan, setNoKenderaan] = useState("");
-  const [noIc, setNoIc] = useState("");
-  const [nama, setNama] = useState("");
-  const [umur, setUmur] = useState("");
+  const [noReport, setNoReport] = useState("");
+  const [pihakTerlibat, setPihakTerlibat] = useState(() => [
+    createEmptyPihakTerlibatRow(),
+  ]);
+  const [pihakValidationErrors, setPihakValidationErrors] = useState({});
   const [alamat, setAlamat] = useState("");
   const [locationId, setLocationId] = useState("");
   const [tarikhKemalangan, setTarikhKemalangan] = useState("");
   const [waktuKejadian, setWaktuKejadian] = useState("");
-  const [kategoriKenderaan, setKategoriKenderaan] = useState("Motosikal");
   const [kesalahan, setKesalahan] = useState("Kelajuan");
   const [melibatkanBinatang, setMelibatkanBinatang] = useState(false);
   const [jenisBinatang, setJenisBinatang] = useState("Kerbau");
@@ -51,15 +57,12 @@ export default function SiasatanForm({
     () =>
       noSaman !== "" ||
       kategoriSaman !== "" ||
-      noKenderaan !== "" ||
-      noIc !== "" ||
-      nama !== "" ||
-      umur !== "" ||
+      noReport !== "" ||
+      isPihakTerlibatDefaultDirty(pihakTerlibat) ||
       alamat !== "" ||
       effectiveLocationId !== defaultLocationId ||
       tarikhKemalangan !== "" ||
       waktuKejadian !== "" ||
-      kategoriKenderaan !== "Motosikal" ||
       kesalahan !== "Kelajuan" ||
       melibatkanBinatang !== false ||
       jenisBinatang !== "Kerbau" ||
@@ -68,16 +71,13 @@ export default function SiasatanForm({
     [
       noSaman,
       kategoriSaman,
-      noKenderaan,
-      noIc,
-      nama,
-      umur,
+      noReport,
+      pihakTerlibat,
       alamat,
       effectiveLocationId,
       defaultLocationId,
       tarikhKemalangan,
       waktuKejadian,
-      kategoriKenderaan,
       kesalahan,
       melibatkanBinatang,
       jenisBinatang,
@@ -92,6 +92,13 @@ export default function SiasatanForm({
     setKesalahan(newKesalahan);
     if (newKesalahan === "Langgar binatang") {
       setMelibatkanBinatang(true);
+    }
+  };
+
+  const handlePihakTerlibatChange = (nextRows) => {
+    setPihakTerlibat(nextRows);
+    if (Object.keys(pihakValidationErrors).length > 0) {
+      setPihakValidationErrors({});
     }
   };
 
@@ -112,15 +119,13 @@ export default function SiasatanForm({
   const resetFields = () => {
     setNoSaman("");
     setKategoriSaman("");
-    setNoKenderaan("");
-    setNoIc("");
-    setNama("");
-    setUmur("");
+    setNoReport("");
+    setPihakTerlibat([createEmptyPihakTerlibatRow()]);
+    setPihakValidationErrors({});
     setAlamat("");
     setLocationId(activeLocations[0]?.id || "");
     setTarikhKemalangan("");
     setWaktuKejadian("");
-    setKategoriKenderaan("Motosikal");
     setKesalahan("Kelajuan");
     setMelibatkanBinatang(false);
     setJenisBinatang("Kerbau");
@@ -135,6 +140,12 @@ export default function SiasatanForm({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const savedSaman = noSaman.trim().toUpperCase();
+    if (!savedSaman) {
+      setStatusText("Ralat: Sila masukkan No. Saman yang sah.");
+      return;
+    }
+
     const validKategoriSaman = normalizeSamanCategory(kategoriSaman);
     if (!validKategoriSaman) {
       setStatusText(
@@ -143,26 +154,36 @@ export default function SiasatanForm({
       return;
     }
 
+    const savedReport = noReport.trim().toUpperCase();
+    if (!savedReport) {
+      setStatusText("Ralat: Sila masukkan No. Report yang sah.");
+      return;
+    }
+
+    const partyCheck = validatePihakTerlibatRows(pihakTerlibat);
+    if (!partyCheck.valid) {
+      setPihakValidationErrors(partyCheck.rowErrors);
+      setStatusText(`Ralat: ${partyCheck.error}`);
+      return;
+    }
+
+    setPihakValidationErrors({});
     setSubmitting(true);
 
     try {
       const isMaut = jenisKemalangan === "Maut";
-      const savedSaman = noSaman.trim();
 
       await onAddRecord({
         no_saman: savedSaman,
         kategori_saman: validKategoriSaman,
-        no_kenderaan: noKenderaan.trim().toUpperCase(),
-        no_ic: Number(noIc),
-        nama: nama.trim().toUpperCase(),
-        umur: Number(umur),
+        no_report: savedReport,
+        pihak_terlibat: partyCheck.cleanList,
         alamat: alamat.trim(),
         tempat_kemalangan: selectedLocation?.road_type || "Persekutuan",
         location_id: selectedLocation?.id || effectiveLocationId,
         location_name: selectedLocation?.name || "",
         tarikh_kemalangan: tarikhKemalangan,
         waktu_kejadian: waktuKejadian,
-        kategori_kenderaan: kategoriKenderaan,
         kesalahan,
         melibatkan_binatang: melibatkanBinatang,
         jenis_binatang: melibatkanBinatang ? jenisBinatang : null,
@@ -210,7 +231,7 @@ export default function SiasatanForm({
             onChange={(e) => setNoSaman(e.target.value)}
             placeholder="Contoh: SMN-2026-00142"
             required
-            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] uppercase placeholder:normal-case focus:outline-none focus:border-[var(--color-accent)]"
           />
         </div>
 
@@ -238,93 +259,41 @@ export default function SiasatanForm({
           </select>
         </div>
 
-        {/* 3. No. Kenderaan */}
-        <div className="flex flex-col gap-1.5">
+        {/* 3. No. Report */}
+        <div className="col-span-full flex flex-col gap-1.5">
           <label
-            htmlFor="noKenderaan"
+            htmlFor="noReport"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            3. No. Kenderaan
+            3. No. Report
           </label>
           <input
-            id="noKenderaan"
+            id="noReport"
             type="text"
-            value={noKenderaan}
-            onChange={(e) => setNoKenderaan(e.target.value)}
-            placeholder="Contoh: VAB 1234"
+            value={noReport}
+            onChange={(e) => setNoReport(e.target.value)}
+            placeholder="Contoh: RPT/00142/26"
             required
-            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] uppercase placeholder:normal-case focus:outline-none focus:border-[var(--color-accent)]"
           />
         </div>
 
-        {/* 4. No. IC */}
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="noIc"
-            className="text-xs text-[var(--color-text-label)] font-semibold"
-          >
-            4. No. IC
-          </label>
-          <input
-            id="noIc"
-            type="number"
-            inputMode="numeric"
-            value={noIc}
-            onChange={(e) => setNoIc(e.target.value)}
-            placeholder="Contoh: 950101145678 (tanpa sengkang)"
-            required
-            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
-          />
-        </div>
+        {/* 4. Kenderaan & Pemandu / Pejalan Kaki Terlibat */}
+        <PihakTerlibatBatchInput
+          value={pihakTerlibat}
+          onChange={handlePihakTerlibatChange}
+          disabled={submitting}
+          fieldNumber={4}
+          validationErrors={pihakValidationErrors}
+        />
 
-        {/* 5. Nama */}
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="nama"
-            className="text-xs text-[var(--color-text-label)] font-semibold"
-          >
-            5. Nama
-          </label>
-          <input
-            id="nama"
-            type="text"
-            value={nama}
-            onChange={(e) => setNama(e.target.value)}
-            placeholder="Nama penuh (simulasi)"
-            required
-            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
-          />
-        </div>
-
-        {/* 6. Umur */}
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="umur"
-            className="text-xs text-[var(--color-text-label)] font-semibold"
-          >
-            6. Umur
-          </label>
-          <input
-            id="umur"
-            type="number"
-            min="0"
-            max="120"
-            inputMode="numeric"
-            value={umur}
-            onChange={(e) => setUmur(e.target.value)}
-            placeholder="Contoh: 31"
-            required
-            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
-          />
-        </div>
-
-        {/* 7. Alamat */}
-        <div className="flex flex-col gap-1.5">
+        {/* 5. Alamat */}
+        <div className="col-span-full flex flex-col gap-1.5">
           <label
             htmlFor="alamat"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            7. Alamat
+            5. Alamat
           </label>
           <input
             id="alamat"
@@ -337,13 +306,13 @@ export default function SiasatanForm({
           />
         </div>
 
-        {/* 8. Lokasi Hotspot / Jalan (+ modal tambah lokasi) */}
+        {/* 6. Lokasi Hotspot / Jalan (+ modal tambah lokasi) */}
         <div className="col-span-full flex flex-col gap-1.5">
           <label
             htmlFor="lokasiHotspot"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            8. Lokasi Hotspot / Jalan
+            6. Lokasi Hotspot / Jalan
           </label>
           <div className="flex gap-2.5 items-stretch max-[550px]:flex-col">
             <select
@@ -416,13 +385,13 @@ export default function SiasatanForm({
           />
         </div>
 
-        {/* 9. Tarikh Kemalangan */}
+        {/* 7. Tarikh Kemalangan */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="tarikhKemalangan"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            9. Tarikh Kemalangan
+            7. Tarikh Kemalangan
           </label>
           <input
             id="tarikhKemalangan"
@@ -434,13 +403,13 @@ export default function SiasatanForm({
           />
         </div>
 
-        {/* 10. Waktu Kejadian (HH:MM) */}
+        {/* 8. Waktu Kejadian (HH:MM) */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="waktuKejadian"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            10. Waktu Kejadian (HH:MM)
+            8. Waktu Kejadian (HH:MM)
           </label>
           <input
             id="waktuKejadian"
@@ -452,41 +421,13 @@ export default function SiasatanForm({
           />
         </div>
 
-        {/* 11. Kategori Kenderaan */}
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="kategoriKenderaan"
-            className="text-xs text-[var(--color-text-label)] font-semibold"
-          >
-            11. Kategori Kenderaan
-          </label>
-          <select
-            id="kategoriKenderaan"
-            value={kategoriKenderaan}
-            onChange={(e) => setKategoriKenderaan(e.target.value)}
-            required
-            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
-          >
-            <option value="Motosikal">Motosikal</option>
-            <option value="Kereta">Kereta</option>
-            <option value="MPV / SUV">MPV / SUV</option>
-            <option value="Van">Van</option>
-            <option value="Bas">Bas</option>
-            <option value="Lori / Kenderaan Berat">
-              Lori / Kenderaan Berat
-            </option>
-            <option value="Basikal">Basikal</option>
-            <option value="Lain-lain">Lain-lain</option>
-          </select>
-        </div>
-
-        {/* 12. Kesalahan (Punca Kemalangan) */}
+        {/* 9. Kesalahan (Punca Kemalangan) */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="kesalahan"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            12. Kesalahan (Punca Kemalangan)
+            9. Kesalahan (Punca Kemalangan)
           </label>
           <select
             id="kesalahan"
@@ -507,10 +448,10 @@ export default function SiasatanForm({
           </select>
         </div>
 
-        {/* 13. Melibatkan Binatang */}
+        {/* 10. Melibatkan Binatang */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs text-[var(--color-text-label)] font-semibold">
-            13. Melibatkan Binatang
+            10. Melibatkan Binatang
           </label>
           <div className="flex gap-4 items-center py-1.5 text-[13px]">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -559,13 +500,13 @@ export default function SiasatanForm({
           </div>
         )}
 
-        {/* 14. Jenis Kemalangan */}
+        {/* 11. Jenis Kemalangan */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="jenisKemalangan"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            14. Jenis Kemalangan
+            11. Jenis Kemalangan
           </label>
           <select
             id="jenisKemalangan"

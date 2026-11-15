@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { getPeriodLabelBM } from "../../hooks/usePeriodData";
+import { isHotspotLocation } from "../../utils/locations";
+import { normalizePihakTerlibatList } from "../../utils/siasatan";
 import Chip from "../shared/Chip";
 
 // In-memory cache keyed by `${locationId}:${period}:${recordsSignature}` to preserve Gemini quota
@@ -35,7 +37,8 @@ export function synthesizeFromRecords(location, locRecords = [], locOps = []) {
   }
 
   const topViolations = countTopKey(locRecords, (r) => r.kesalahan);
-  const topVehicles = countTopKey(locRecords, (r) => r.kategori_kenderaan);
+  const allParties = locRecords.flatMap((r) => normalizePihakTerlibatList(r));
+  const topVehicles = countTopKey(allParties, (p) => p.kategori_kenderaan);
   const topOpsTypes = countTopKey(locOps, (o) => o.jenis_operasi);
   const animalRecs = locRecords.filter((r) => r.melibatkan_binatang);
   const fatalSiasatan = locRecords.filter((r) => r.maut).length;
@@ -121,10 +124,20 @@ async function fetchGeminiLocationInsight({
   const siasatanDigest =
     locRecords.length > 0
       ? locRecords
-          .map(
-            (r) =>
-              `- ${r.tarikh_kemalangan} ${r.waktu_kejadian}: Kenderaan=${r.kategori_kenderaan}, Kesalahan=${r.kesalahan}, Jenis=${r.jenis_kemalangan}, Maut=${r.maut ? `Ya (${r.bilangan_maut})` : "Tidak"}, Binatang=${r.melibatkan_binatang ? r.jenis_binatang : "Tiada"}, Umur=${r.umur}`
-          )
+          .map((r) => {
+            const parties = normalizePihakTerlibatList(r);
+            const kenderaanList =
+              parties
+                .map((p) => p.kategori_kenderaan)
+                .filter(Boolean)
+                .join(", ") || "-";
+            const umurList =
+              parties
+                .map((p) => p.umur)
+                .filter((u) => u !== null && u !== undefined && u !== "")
+                .join(", ") || "-";
+            return `- ${r.tarikh_kemalangan} ${r.waktu_kejadian}: Kenderaan=[${kenderaanList}], Kesalahan=${r.kesalahan}, Jenis=${r.jenis_kemalangan}, Maut=${r.maut ? `Ya (${r.bilangan_maut})` : "Tidak"}, Binatang=${r.melibatkan_binatang ? r.jenis_binatang : "Tiada"}, Umur=[${umurList}]`;
+          })
           .join("\n")
       : "Tiada rekod siasatan.";
 
@@ -213,10 +226,12 @@ export default function LocationRisk({
 
   const recordsSignature = useMemo(() => {
     const rSig = locRecords
-      .map(
-        (r) =>
-          `${r.id}:${r.kesalahan}:${r.kategori_kenderaan}:${r.jenis_kemalangan}:${r.maut}:${r.bilangan_maut}:${r.waktu_kejadian}`
-      )
+      .map((r) => {
+        const partiesSig = normalizePihakTerlibatList(r)
+          .map((p) => `${p.kategori_kenderaan}@${p.umur ?? ""}`)
+          .join(",");
+        return `${r.id}:${r.kesalahan}:${partiesSig}:${r.jenis_kemalangan}:${r.maut}:${r.bilangan_maut}:${r.waktu_kejadian}`;
+      })
       .join("|");
     const oSig = locOps
       .map(
@@ -308,6 +323,7 @@ export default function LocationRisk({
   const risk = Number(location.risk ?? 0);
   const isHighRisk = risk >= 75;
   const isBlackspot = Boolean(location.is_blackspot);
+  const isHotspot = isHotspotLocation(location);
   const cases = location.cases ?? 0;
   const fatalCount = location.fatal_count ?? 0;
   const deathsCount = location.deaths_count ?? 0;
@@ -424,6 +440,18 @@ export default function LocationRisk({
                 }}
               >
                 ⚫ BLACKSPOT
+              </span>
+            )}
+            {isHotspot && (
+              <span
+                className="inline-block rounded-[7px] px-2.5 py-1 text-[11px] font-semibold"
+                style={{
+                  background: "#352216",
+                  color: "#fdb46c",
+                  border: "1px solid #9a5b25",
+                }}
+              >
+                🔥 HOTSPOT
               </span>
             )}
           </div>

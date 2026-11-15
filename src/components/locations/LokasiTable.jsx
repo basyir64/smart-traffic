@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { LOKASI_PAGE_SIZE } from "../../hooks/useLocations";
+import { STANDARD_LOCATION_SOURCES } from "../../utils/locations";
 import Chip from "../shared/Chip";
 import {
   useRegisterUnsavedForm,
@@ -108,6 +109,10 @@ export default function LokasiTable({
       setSaving(false);
     }
   };
+
+  const legacySourceOption = [initialFormState?.source, formState?.source].find(
+    (s) => s && !STANDARD_LOCATION_SOURCES.includes(s)
+  );
 
   return (
     <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl p-5 max-[550px]:p-3.5 shadow-[0_7px_25px_#040a1630]">
@@ -449,10 +454,16 @@ export default function LokasiTable({
                   }
                   className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
                 >
-                  <option value="LAMPIRAN BLACKSPOT">LAMPIRAN BLACKSPOT</option>
-                  <option value="LAMPIRAN HOTSPOT">LAMPIRAN HOTSPOT</option>
-                  <option value="JKR / MIROS">JKR / MIROS</option>
-                  <option value="DALAMAN BSPT">DALAMAN BSPT</option>
+                  {STANDARD_LOCATION_SOURCES.map((src) => (
+                    <option key={src} value={src}>
+                      {src}
+                    </option>
+                  ))}
+                  {legacySourceOption && (
+                    <option value={legacySourceOption}>
+                      {legacySourceOption}
+                    </option>
+                  )}
                 </select>
               </div>
 

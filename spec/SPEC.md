@@ -876,6 +876,156 @@ To be prioritized and implemented after the conclusion of the First Round of UAT
 
 ---
 
+### UAT Round 3 — Development Phases
+
+> [!IMPORTANT]
+> **Third Round of User Acceptance Testing (UAT 3) Scope — ✅ COMPLETED**:
+> Tracks operational requirements implemented after UAT Round 2.
+> All UAT Round 3 phases (Phases 1–4) are implemented and verified.
+
+#### UAT 3 · Phase 1 — Dashboard Hotspot Indicator (`Risiko Lokasi Pilihan` & `Hotspot Keutamaan`) ✅ COMPLETED
+
+##### 1. Hotspot Indicator Derivation & Normalization (`locations` Collection)
+1. **Source-Based Hotspot Predicate (`isHotspotLocation`)**:
+   - Derive `isHotspotLocation(loc)` strictly from field `6. Sumber Rujukan` (`loc.source`) in the `locations` collection:
+     ```js
+     export function isHotspotLocation(loc) {
+       return String(loc?.source || "")
+         .trim()
+         .toUpperCase()
+         .startsWith("LAMPIRAN HOTSPOT");
+     }
+     ```
+   - Matches both `"LAMPIRAN HOTSPOT"` (selected in `LokasiForm.jsx` / `LokasiTable.jsx`) and legacy seeded strings `"LAMPIRAN HOTSPOT 1"` through `"LAMPIRAN HOTSPOT 4"` in `src/data/seedLocations.js`.
+2. **`LokasiTable.jsx` Edit Modal Legacy Preservation**:
+   - In `Kemaskini Lokasi & Lampiran Blackspot` (`src/components/locations/LokasiTable.jsx`), if `formState.source` is a legacy value such as `"LAMPIRAN HOTSPOT 1..4"` not present in the standard 4 `<option>` choices, dynamically render an `<option value={formState.source}>{formState.source}</option>` so opening and editing a seeded hotspot never silently resets its `6. Sumber Rujukan` dropdown to `"LAMPIRAN BLACKSPOT"` or falsely triggers dirty state.
+3. **Co-existence with `is_blackspot` & Unchanged Scoring**:
+   - `5. Status Blackspot` (`loc.is_blackspot`) and `6. Sumber Rujukan` (`loc.source`) remain independent. If a location has both `is_blackspot === true` and `isHotspotLocation(loc) === true`, **both** indicators render side-by-side.
+   - The existing `Skor Risiko` formula in `src/views/App.jsx` and `src/views/Layout.jsx` (`baseWeight = loc.is_blackspot ? 35 : 15`) and the map legend in `GoogleHotspotMap.jsx` remain **completely unchanged**.
+
+##### 2. UI Rendering (`LocationRisk.jsx` & `HotspotList.jsx` — Design Language Consistency)
+1. **`Risiko Lokasi Pilihan` (`src/components/locations/LocationRisk.jsx`)**:
+   - When `isHotspotLocation(location)` is `true`, render a `🔥 HOTSPOT` badge alongside the risk level badge and (when applicable) `⚫ BLACKSPOT` badge:
+     - Consistent dark-theme chip styling matching `⚫ BLACKSPOT` (`inline-block rounded-[7px] px-2.5 py-1 text-[11px] font-semibold` with warm amber/orange contrast: `background: "#352216"`, `color: "#fdb46c"`, `border: "1px solid #9a5b25"`).
+2. **`Hotspot Keutamaan` (`src/components/locations/HotspotList.jsx`)**:
+   - Append ` 🔥` next to `{rankNumber}. {loc.name}` whenever `isHotspotLocation(loc)` is `true`, mirroring `{isBlackspot ? " ⚫" : ""}` (e.g., `{rankNumber}. {loc.name}{isBlackspot ? " ⚫" : ""}{isHotspot ? " 🔥" : ""}`).
+
+##### 3. Verification Checklist (for Implementing Agent)
+- Confirm `npm run lint` (ESLint zero errors/warnings) and `npm run build` succeed.
+- Verify locations with `source` matching `LAMPIRAN HOTSPOT` (both `"LAMPIRAN HOTSPOT"` and seeded `"LAMPIRAN HOTSPOT 1..4"`) display `🔥 HOTSPOT` in `Risiko Lokasi Pilihan` and `🔥` in `Hotspot Keutamaan`.
+- Verify a location with both `is_blackspot: true` and `LAMPIRAN HOTSPOT` renders both `⚫ BLACKSPOT` / `⚫` and `🔥 HOTSPOT` / `🔥` side-by-side.
+- Verify `LokasiTable.jsx` Edit Modal displays `"LAMPIRAN HOTSPOT 1..4"` accurately on seeded records without reverting to `"LAMPIRAN BLACKSPOT"`.
+- Verify locations with `JKR / MIROS` or `DALAMAN BSPT` do **not** display the Hotspot indicator, and `GoogleHotspotMap.jsx` legend + `Skor Risiko` formula (`35` vs `15`) remain unchanged.
+
+---
+
+#### UAT 3 · Phase 2 — Custom `"Lain-lain"` Location Option in Penguatkuasaan (`Borang Input Penguatkuasaan`) ✅ COMPLETED
+
+##### 1. `"Lain-lain"` Option & Conditional Custom Input (`PenguatkuasaanForm.jsx` & `PenguatkuasaanTable.jsx`)
+1. **Master-Dependent Dropdown + `"Lain-lain"` Option**:
+   - Keep `2. Lokasi Hotspot / Jalan` populated dynamically from `activeLocations` (`locations` master collection) and append `<option value="__LAIN_LAIN__">Lain-lain</option>` as the final option.
+   - Default selection remains `activeLocations[0]?.id || "__LAIN_LAIN__"`.
+   - When `"__LAIN_LAIN__"` is selected, render a **required** text input immediately below/adjacent (`Lokasi Lain-lain (Nyatakan)`, `placeholder="Contoh: JALAN KAMPUNG GAJAH / KM12 JALAN PARIT"`, matching standard form input tokens `bg-[var(--color-nav-bg)] border-[var(--color-border-light)] rounded-[9px] text-[13px]`).
+   - On submit/save: validate non-empty after `.trim()`, and **auto-uppercase** (`customLocation.trim().toUpperCase()`) to match master location naming conventions.
+2. **No Write to `locations` Master Collection (Intentional Difference from Siasatan)**:
+   - Unlike `SiasatanForm.jsx` (`Lokasi Hotspot / Jalan` + `+ Tambah Lokasi` modal), submitting `"Lain-lain"` in `Penguatkuasaan` **must NOT** create or modify any document in Firestore `locations`.
+   - Consistent with `firestore.rules` and `role_matrix.md` (`Penguatkuasaan` cannot write to `locations`).
+3. **Persistence Schema, Table Badge & Edit Modal (`usePenguatkuasaan.js`, `PenguatkuasaanTable.jsx`)**:
+   - Store on `penguatkuasaan/{opId}`:
+     - When `"__LAIN_LAIN__"` is selected: `location_id: "__LAIN_LAIN__"`, `location_name: customLocation.trim().toUpperCase()`, `is_custom_location: true`.
+     - When a master location is selected: `location_id: selectedLoc.id`, `location_name: selectedLoc.name`, `is_custom_location: false`.
+   - Update `normalizeOperation` in `src/hooks/usePenguatkuasaan.js` to normalize `is_custom_location: Boolean(raw.is_custom_location || raw.location_id === "__LAIN_LAIN__")`.
+   - **`Senarai Rekod Penguatkuasaan` (`PenguatkuasaanTable.jsx`)**: In the `Lokasi` column, display `op.location_name` together with a subtle `Lain-lain` badge (e.g. `bg-slate-500/15 text-[var(--color-text-secondary)] border border-[var(--color-border-light)] rounded-full px-1.5 py-0.5 text-[10px] font-semibold`) whenever `op.is_custom_location` is `true`.
+   - **`Kemaskini Rekod Penguatkuasaan` Edit Modal (`PenguatkuasaanTable.jsx`)**:
+     - Include `<option value="__LAIN_LAIN__">Lain-lain</option>` and the conditional required `Lokasi Lain-lain (Nyatakan)` text input.
+     - Ensure custom-location records reopen with `"__LAIN_LAIN__"` selected and `custom_location: op.location_name` pre-filled (do **not** treat `"__LAIN_LAIN__"` as a deactivated master location `(Tidak Aktif)`).
+   - **Navigation Safety (`useUnsavedChanges.js`)**: Include `locationId === "__LAIN_LAIN__"` and `customLocation` in `PenguatkuasaanForm.jsx` `isDirty` + `resetFields()`, and in `PenguatkuasaanTable.jsx` modal `snapshot`.
+
+##### 2. Cross-Collection & Dashboard Behavior (Confirmed)
+- Operations logged with `"Lain-lain"` **are included** in Dashboard global KPI cards (`Jumlah Kemalangan`, `Kemalangan Maut`, `Jumlah Kematian`, `Jumlah Saman`), `TrendBarChart`, and Dashboard CSV export.
+- Because `"Lain-lain"` is excluded from `locations`, these operations **are excluded** from `Hotspot Keutamaan`, `Risiko Lokasi Pilihan`, Map markers, and registered location `Skor Risiko` calculations.
+
+##### 3. Verification Checklist (for Implementing Agent)
+- Confirm `npm run lint` and `npm run build` succeed with zero errors/warnings.
+- Verify `2. Lokasi Hotspot / Jalan` in both `PenguatkuasaanForm.jsx` and `PenguatkuasaanTable.jsx` Edit Modal dynamically reflects active `locations` plus `"Lain-lain"`.
+- Verify selecting `"Lain-lain"` requires custom text, auto-uppercases on save, persists `is_custom_location: true` without creating any document in `locations` (verified via Firestore count before/after), displays the `Lain-lain` badge in `Senarai Rekod Penguatkuasaan`, and reopens cleanly in Edit Modal without `(Tidak Aktif)` mislabeling.
+- Verify `UnsavedChangesModal` triggers when `"Lain-lain"` or custom location text has unsaved changes.
+- Verify `SiasatanForm.jsx` location dropdown + `+ Tambah Lokasi` behavior remains separate and unchanged.
+
+---
+
+#### UAT 3 · Phase 3 — Siasatan `No. Report` & Multiple Vehicles / Drivers / Passengers ✅ COMPLETED
+
+##### 1. Confirmed Structure & Field Order (`Borang Input Data Siasatan` & `Kemaskini Rekod Siasatan`)
+1. **Sequential Numbering (`1`–`11`)** *(Option B — `3. No. Report` placed immediately before the combined repeatable block, and old `11. Kategori Kenderaan` moved inside each repeatable row)*:
+   1. **No. Saman** *(singular, required uppercase text — kept 1 per `siasatan` record)*
+   2. **Kategori Saman** *(singular, required select: `POL 170 A` / `POL 257` — kept 1 per `siasatan` record)*
+   3. **No. Report** *(text input, e.g. `RPT/00142/26`, trimmed and auto-uppercased on save; **required** on new submissions in `SiasatanForm.jsx`; in `Kemaskini Rekod Siasatan`, required unless preserving an untouched legacy UAT 1/2 record whose stored `no_report` is `""`, which normalizes to `""` and renders `"-"` in table/PDF)*
+   4. **Kenderaan & Pemandu / Pejalan Kaki Terlibat** *(numbered repeatable batch rows `1.`, `2.`, ..., minimum 1 row, with `+ Tambah Pihak Terlibat` & `✕` remove button, styled like `SamanBatchInput.jsx` **without** CSV template/import)*:
+      - Each row captures:
+        - **Kategori Kenderaan** *(moved from old #11; required select: `Motosikal`, `Kereta`, `MPV / SUV`, `Van`, `Bas`, `Lori / Kenderaan Berat`, `Basikal`, `Pejalan Kaki`, `Lain-lain`)*
+        - **No. Kenderaan** *(uppercase text; required for motorized/other vehicles, **optional** when `Kategori Kenderaan === "Basikal"`, and automatically **cleared & disabled** when `Kategori Kenderaan === "Pejalan Kaki"`)*
+        - **No. IC** *(required digits-only text input with `inputMode="numeric"` so leading zeros e.g. `040812085123` are preserved)*
+        - **Nama** *(required uppercase text)*
+        - **Umur** *(required numeric `0`–`120`)*
+        - **Bilangan Penumpang** *(numeric `min="0"`, integer default `0`; excludes the driver; automatically **set to `0` & disabled** when `Kategori Kenderaan === "Pejalan Kaki"`)*
+   5. **Alamat** *(single text input — kept singular per record)*
+   6. **Lokasi Hotspot / Jalan** *(select + `+ Tambah Lokasi` modal + auto read-only `Nama Jalan` & `Jenis Jalan`)*
+   7. **Tarikh Kemalangan** *(date)*
+   8. **Waktu Kejadian (HH:MM)** *(time)*
+   9. **Kesalahan (Punca Kemalangan)** *(select)*
+   10. **Melibatkan Binatang** *(radio `Tidak` / `Ya` + conditional `Jenis Binatang`)*
+   11. **Jenis Kemalangan** *(select `Rosak sahaja`, `Cedera ringan`, `Cedera parah`, `Maut` + conditional `Bilangan Kematian (Nyawa)`)*
+
+##### 2. Firestore Schema, Backward Compatibility & Table Display
+1. **Firestore Document (`siasatan/{siasatanId}`, `useSiasatan.js`, `seedSiasatan.js`)**:
+   - Store `no_report: string` and `pihak_terlibat: Array<{ kategori_kenderaan, no_kenderaan, no_ic, nama, umur, bilangan_penumpang }>`.
+   - In `normalizeSiasatan(raw)`, coerce legacy UAT 1/2 scalar records (`no_kenderaan`, `no_ic`, `nama`, `umur`, `kategori_kenderaan`, missing `no_report`) into `no_report: ""` and a 1-item `pihak_terlibat` array (converting legacy `no_ic` safely to string without stripping leading zeros on new string records, and defaulting `bilangan_penumpang` to `0`).
+   - Track `no_report` and dynamic `pihak_terlibat` rows in `SiasatanForm.jsx` `isDirty` / `resetFields()` and `SiasatanTable.jsx` Edit Modal `snapshot` (`isFormStateDirty` supports nested object arrays).
+2. **`Senarai Rekod Siasatan` (`SiasatanTable.jsx`)**:
+   - Add **`No. Report`** column (displaying `"-"` when empty on legacy records).
+   - Update **`No. Kenderaan`** column to render the first row's `no_kenderaan` (or `"Pejalan Kaki"` / `"-"` if empty) + a **`+N`** badge when `pihak_terlibat.length > 1`, with a full hover `title` tooltip listing all involved vehicles/pedestrians, drivers, and passenger counts.
+   - Mirror the same **`+N`** badge and hover `title` tooltip in the **`Kenderaan`** column when `pihak_terlibat.length > 1`.
+
+##### 3. Cross-Component & Aggregation Dependencies (`9 Elemen`, `LocationRisk`)
+1. **`9 Elemen Data Kemalangan` (`useSiasatan.js`, `SiasatanAggregation.jsx`)**:
+   - **Element `8. Kategori umur`**: Count **unique age brackets per case** with unit **`kes`** (e.g., two 22-year-old drivers in one case contribute `+1 kes` to `21-25`, keeping total age-bracket logic consistent with case-level counting while inspecting every age in `pihak_terlibat`).
+   - **Element `7. Kategori kenderaan`**: Inspect all rows in `pihak_terlibat` and count **every involved vehicle/pedestrian row** with unit **`kenderaan`** (including `- Pejalan Kaki`), updating `SiasatanAggregation.jsx` parent row count for Element 7 to display total involved units (`<N> kenderaan` instead of `${summary.totalCases} kes`), and loading sub-items on expand via `loadByQuery` (same pattern as Elements 5 & 8) rather than Firestore `where("kategori_kenderaan", ...)`.
+2. **`Risiko Lokasi Pilihan` (`LocationRisk.jsx`)**:
+   - Pass all involved `pihak_terlibat` vehicle categories and ages (e.g., `Kenderaan=[Motosikal, Kereta]`, `Umur=[22, 34]`) to Gemini AI synthesis and `recordsSignature`, while strictly excluding PII (`nama`, `no_ic`, `alamat`, `no_report`).
+
+##### 4. Verification Checklist (for Implementing Agent)
+- Confirm `npm run lint` and `npm run build` succeed with zero errors/warnings.
+- Verify sequential numbering `1`–`11` across `SiasatanForm.jsx` and `SiasatanTable.jsx` Edit Modal, with singular/required `1. No. Saman` & `2. Kategori Saman`, required auto-uppercased `3. No. Report` (create), and `4. Kenderaan & Pemandu / Pejalan Kaki Terlibat` dynamic rows (no CSV import).
+- Verify `Pejalan Kaki` clears & disables `No. Kenderaan` and sets/disables `Bilangan Penumpang = 0`, `Basikal` allows optional empty `No. Kenderaan`, `No. IC` preserves leading zeros, `UnsavedChangesModal` detects edits inside dynamic rows, and `Kosongkan Borang` resets cleanly.
+- Verify `SiasatanTable.jsx` renders `No. Report` column and `+N` badges with full tooltips in `No. Kenderaan` and `Kenderaan`, and legacy UAT 1/2 documents normalize, display, edit, and aggregate cleanly.
+- Verify `9 Elemen Data Kemalangan` (Elements 7 & 8) and `LocationRisk.jsx` AI digest compute accurately without leaking PII.
+
+---
+
+#### UAT 3 · Phase 4 — Single Siasatan Record PDF Print Feature ✅ COMPLETED
+
+##### 1. Trigger Placement, RBAC & Data Resolution
+- Add a **`🖨️ Cetak PDF`** button in a **`Tindakan`** column on each row of `Senarai Rekod Siasatan` (`SiasatanTable.jsx`, using `e.stopPropagation()` so clicking print never opens the Edit Modal) AND in the `Kemaskini Rekod Siasatan` modal footer.
+- **RBAC**: Enabled for **`Siasatan`**, **`Admin`**, AND view-only **`Penguatkuasaan`** users viewing `/siasatan`. Update `role_matrix.md` to reflect Siasatan fields `1`–`11` and `Penguatkuasaan` read/print access.
+- **Resolved Location Metadata**: Look up `selectedLocation = allLocations.find((l) => l.id === record.location_id)` so the printed sheet displays both `Nama Jalan` (`selectedLocation?.route || "-"`) and `Jenis Jalan` (`selectedLocation?.road_type || record.tempat_kemalangan || "-"`).
+
+##### 2. Native Print Sheet Architecture (`window.print()` — Zero New Dependencies)
+- Render a dedicated print component via **React Portal** (`createPortal` into a body-level `#siasatan-print-root` container) and add `@media print` rules in `src/index.css` hiding `#root` / modals / scrollbars while showing only the clean A4 sheet (`@page { size: A4 portrait; margin: 12mm; }`).
+- **Printer-Friendly White-Paper HTML `<table>` Layout**:
+  - White background (`#ffffff`), dark text, crisp `1px solid` black/slate table borders (unrelated to the dark `#091327` glassmorphism screen UI).
+  - Header block (`PDRM · BSPT · INOVASI IPD`, `SMART TRAFFIC AI — REKOD SIASATAN KEMALANGAN`, document ID & print timestamp) + mandatory **`DATA SIMULASI — BUKAN IPRS SEBENAR`** notice banner.
+  - Simple key-value HTML table matching `Borang Input Data Siasatan` numbering (`1`–`11`), including resolved `Nama Jalan` & `Jenis Jalan` and conditional `Jenis Binatang` / `Bilangan Kematian (Nyawa)` rows when applicable (displaying `"-"` safely for legacy fields such as missing `no_report`).
+  - Nested structured HTML sub-table under `4. Kenderaan & Pemandu / Pejalan Kaki Terlibat` listing all `pihak_terlibat` rows (`Bil.`, `Kategori Kenderaan`, `No. Kenderaan`, `No. IC`, `Nama`, `Umur`, `Bilangan Penumpang`).
+- Clicking **`🖨️ Cetak PDF`** sets the active print record (suggested `document.title` e.g. `Rekod_Siasatan_<NoSaman>` for default Save-as-PDF filename), triggers `window.print()` on the next frame after portal commit, and restores state/title on `afterprint`.
+
+##### 3. Verification Checklist (for Implementing Agent)
+- Confirm zero new packages in `package.json`, and confirm `npm run lint` and `npm run build` succeed with zero errors/warnings.
+- Verify `Siasatan`, `Admin`, and `Penguatkuasaan` users can trigger `🖨️ Cetak PDF` from `Senarai Rekod Siasatan` without opening the Edit Modal (`e.stopPropagation()`), and `Siasatan` / `Admin` can also trigger it inside `Kemaskini Rekod Siasatan`.
+- Verify `@media print` renders solely the white-paper A4 HTML table (no dark `#091327` background/modal bleed), includes the `DATA SIMULASI — BUKAN IPRS SEBENAR` banner, exact field numbering `1`–`11`, resolved `Nama Jalan` & `Jenis Jalan`, all `pihak_terlibat` rows (including pedestrians/passengers), and handles legacy UAT 1/2 records without errors.
+
+---
+
 ## 10. Key Constraints
 
 - **Simulation data only** — all numbers are fake; the banner "DATA SIMULASI — BUKAN IPRS SEBENAR" must always be visible

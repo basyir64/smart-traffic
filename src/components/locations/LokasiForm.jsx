@@ -1,5 +1,6 @@
 import { useState, useEffect, useId, useMemo } from "react";
 import Chip from "../shared/Chip";
+import { STANDARD_LOCATION_SOURCES } from "../../utils/locations";
 import { useRegisterUnsavedForm } from "../../hooks/useUnsavedChanges";
 
 const DEFAULT_CARD_STATUS =
@@ -274,10 +275,11 @@ export default function LokasiForm({
           disabled={isDisabled}
           className={INPUT_CLASS}
         >
-          <option value="LAMPIRAN BLACKSPOT">LAMPIRAN BLACKSPOT</option>
-          <option value="LAMPIRAN HOTSPOT">LAMPIRAN HOTSPOT</option>
-          <option value="JKR / MIROS">JKR / MIROS</option>
-          <option value="DALAMAN BSPT">DALAMAN BSPT</option>
+          {STANDARD_LOCATION_SOURCES.map((src) => (
+            <option key={src} value={src}>
+              {src}
+            </option>
+          ))}
         </select>
       </div>
 

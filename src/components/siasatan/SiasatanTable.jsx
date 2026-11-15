@@ -1,6 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { SIASATAN_PAGE_SIZE } from "../../hooks/useSiasatan";
 import Chip from "../shared/Chip";
+import PihakTerlibatBatchInput from "./PihakTerlibatBatchInput";
+import SiasatanPrintSheet from "./SiasatanPrintSheet";
 import {
   useRegisterUnsavedForm,
   isFormStateDirty,
@@ -11,6 +13,26 @@ import {
   coerceStoredSamanCategory,
   normalizeSamanCategory,
 } from "../../utils/saman";
+import {
+  createEmptyPihakTerlibatRow,
+  normalizePihakTerlibatList,
+  validatePihakTerlibatRows,
+  getFirstPartyVehicleDisplay,
+  formatPihakTerlibatTooltip,
+  formatPrintDocumentTitle,
+} from "../../utils/siasatan";
+
+function formatPrintTimestamp() {
+  try {
+    return new Intl.DateTimeFormat("ms-MY", {
+      dateStyle: "medium",
+      timeStyle: "medium",
+      hour12: false,
+    }).format(new Date());
+  } catch {
+    return new Date().toLocaleString();
+  }
+}
 
 export default function SiasatanTable({
   records = [],
@@ -30,6 +52,8 @@ export default function SiasatanTable({
   const [initialFormState, setInitialFormState] = useState(null);
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState("");
+  const [modalPihakErrors, setModalPihakErrors] = useState({});
+  const [printJob, setPrintJob] = useState(null);
 
   const isEditModalDirty = useMemo(
     () =>
@@ -54,6 +78,58 @@ export default function SiasatanTable({
     if (!formState?.location_id) return null;
     return locationPool.find((l) => l.id === formState.location_id) || null;
   }, [locationPool, formState]);
+
+  const printLocation = useMemo(() => {
+    const locId = printJob?.record?.location_id;
+    if (!locId) return null;
+    return locationPool.find((l) => l.id === locId) || null;
+  }, [locationPool, printJob]);
+
+  useEffect(() => {
+    if (!printJob) return undefined;
+
+    const prevTitle = document.title;
+    document.title = formatPrintDocumentTitle(printJob.record);
+    document.body.classList.add("printing-siasatan-record");
+
+    const handleAfterPrint = () => {
+      document.body.classList.remove("printing-siasatan-record");
+      document.title = prevTitle;
+      setPrintJob(null);
+    };
+
+    window.addEventListener("afterprint", handleAfterPrint);
+    let raf2 = 0;
+    const raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(() => {
+        window.print();
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(raf1);
+      window.cancelAnimationFrame(raf2);
+      window.removeEventListener("afterprint", handleAfterPrint);
+      document.body.classList.remove("printing-siasatan-record");
+      document.title = prevTitle;
+    };
+  }, [printJob]);
+
+  const handlePrintRecord = (rec) => {
+    if (!rec) return;
+    if (
+      typeof document !== "undefined" &&
+      !document.getElementById("siasatan-print-root")
+    ) {
+      const portalEl = document.createElement("div");
+      portalEl.id = "siasatan-print-root";
+      document.body.appendChild(portalEl);
+    }
+    setPrintJob({
+      record: rec,
+      printedAt: formatPrintTimestamp(),
+    });
+  };
 
   const modalLocationMissingFromActive = useMemo(() => {
     if (!formState?.location_id) return false;
@@ -80,21 +156,23 @@ export default function SiasatanTable({
   const openEditModal = (rec) => {
     if (!canEdit) return;
     setModalError("");
+    setModalPihakErrors({});
     setEditingRecord(rec);
+    const normalizedParties = normalizePihakTerlibatList(rec);
+    const baseParties = normalizedParties.length
+      ? normalizedParties
+      : [createEmptyPihakTerlibatRow()];
     const snapshot = {
       no_saman: rec.no_saman || "",
       kategori_saman: coerceStoredSamanCategory(rec.kategori_saman),
-      no_kenderaan: rec.no_kenderaan || "",
-      no_ic: rec.no_ic ?? "",
-      nama: rec.nama || "",
-      umur: rec.umur ?? "",
+      no_report: rec.no_report || "",
+      pihak_terlibat: baseParties.map((p) => ({ ...p })),
       alamat: rec.alamat || "",
       tempat_kemalangan: rec.tempat_kemalangan || "Persekutuan",
       location_id: rec.location_id || activeLocations[0]?.id || "",
       location_name: rec.location_name || activeLocations[0]?.name || "",
       tarikh_kemalangan: rec.tarikh_kemalangan || "",
       waktu_kejadian: rec.waktu_kejadian || "",
-      kategori_kenderaan: rec.kategori_kenderaan || "Motosikal",
       kesalahan: rec.kesalahan || "Kelajuan",
       melibatkan_binatang: Boolean(rec.melibatkan_binatang),
       jenis_binatang: rec.jenis_binatang || "Kerbau",
@@ -102,7 +180,10 @@ export default function SiasatanTable({
       bilangan_maut: rec.bilangan_maut > 0 ? rec.bilangan_maut : 1,
     };
     setInitialFormState(snapshot);
-    setFormState(snapshot);
+    setFormState({
+      ...snapshot,
+      pihak_terlibat: baseParties.map((p) => ({ ...p })),
+    });
   };
 
   const closeEditModal = () => {
@@ -111,6 +192,7 @@ export default function SiasatanTable({
     setFormState(null);
     setInitialFormState(null);
     setModalError("");
+    setModalPihakErrors({});
   };
 
   const handleModalLocationChange = (newLocId) => {
@@ -136,6 +218,12 @@ export default function SiasatanTable({
     e.preventDefault();
     if (!editingRecord || !formState || !onUpdateRecord) return;
 
+    const savedSaman = (formState.no_saman || "").trim().toUpperCase();
+    if (!savedSaman) {
+      setModalError("Sila masukkan No. Saman yang sah.");
+      return;
+    }
+
     const normalizedKategori = normalizeSamanCategory(formState.kategori_saman);
     const keepLegacyUnset =
       initialFormState?.kategori_saman === UNSET_SAMAN_CATEGORY &&
@@ -148,8 +236,28 @@ export default function SiasatanTable({
       return;
     }
 
+    const savedReport = (formState.no_report || "").trim().toUpperCase();
+    const allowEmptyLegacyReport = !(initialFormState?.no_report);
+    const hasWhitespaceOnlyReport =
+      Boolean(formState.no_report) && savedReport === "";
+    if (
+      hasWhitespaceOnlyReport ||
+      (!savedReport && !allowEmptyLegacyReport)
+    ) {
+      setModalError("Sila masukkan No. Report yang sah.");
+      return;
+    }
+
+    const partyCheck = validatePihakTerlibatRows(formState.pihak_terlibat || []);
+    if (!partyCheck.valid) {
+      setModalPihakErrors(partyCheck.rowErrors);
+      setModalError(partyCheck.error);
+      return;
+    }
+
     setSaving(true);
     setModalError("");
+    setModalPihakErrors({});
     try {
       const selectedLoc = locationPool.find(
         (l) => l.id === formState.location_id
@@ -157,13 +265,11 @@ export default function SiasatanTable({
       const isMaut = formState.jenis_kemalangan === "Maut";
 
       await onUpdateRecord(editingRecord.id, {
-        no_saman: formState.no_saman.trim(),
+        no_saman: savedSaman,
         kategori_saman: normalizedKategori || UNSET_SAMAN_CATEGORY,
-        no_kenderaan: formState.no_kenderaan.trim().toUpperCase(),
-        no_ic: Number(formState.no_ic),
-        nama: formState.nama.trim().toUpperCase(),
-        umur: Number(formState.umur),
-        alamat: formState.alamat.trim(),
+        no_report: savedReport,
+        pihak_terlibat: partyCheck.cleanList,
+        alamat: (formState.alamat || "").trim(),
         tempat_kemalangan:
           selectedLoc?.road_type ||
           formState.tempat_kemalangan ||
@@ -172,7 +278,6 @@ export default function SiasatanTable({
         location_name: selectedLoc?.name || formState.location_name,
         tarikh_kemalangan: formState.tarikh_kemalangan,
         waktu_kejadian: formState.waktu_kejadian,
-        kategori_kenderaan: formState.kategori_kenderaan,
         kesalahan: formState.kesalahan,
         melibatkan_binatang: Boolean(formState.melibatkan_binatang),
         jenis_binatang: formState.melibatkan_binatang
@@ -208,6 +313,7 @@ export default function SiasatanTable({
             <tr className="border-b border-[var(--color-table-border)] text-[var(--color-table-header)] text-xs">
               <th className="text-left py-3 px-2">No. Saman</th>
               <th className="text-left py-3 px-2">Kategori Saman</th>
+              <th className="text-left py-3 px-2">No. Report</th>
               <th className="text-left py-3 px-2">No. Kenderaan</th>
               <th className="text-left py-3 px-2">Lokasi Hotspot</th>
               <th className="text-left py-3 px-2">Tempat</th>
@@ -234,13 +340,16 @@ export default function SiasatanTable({
               <th className="text-left py-3 px-2">Binatang</th>
               <th className="text-left py-3 px-2">Jenis Kemalangan</th>
               <th className="text-left py-3 px-2">Maut</th>
+              <th className="text-left py-3 px-2 whitespace-nowrap">
+                Tindakan
+              </th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr className="border-b border-[var(--color-table-border)] text-xs">
                 <td
-                  colSpan={11}
+                  colSpan={13}
                   className="py-4 px-2 text-center text-[var(--color-text-secondary)]"
                 >
                   Memuatkan halaman {currentPage} dari Firestore...
@@ -249,7 +358,7 @@ export default function SiasatanTable({
             ) : records.length === 0 ? (
               <tr className="border-b border-[var(--color-table-border)] text-xs">
                 <td
-                  colSpan={11}
+                  colSpan={13}
                   className="py-3 px-2 text-[var(--color-text-secondary)]"
                 >
                   Tiada rekod siasatan direkodkan.
@@ -264,6 +373,13 @@ export default function SiasatanTable({
                     : kat === "POL 257"
                       ? "bg-violet-500/15 text-violet-300 border-violet-500/35"
                       : "bg-slate-500/15 text-[var(--color-text-secondary)] border-[var(--color-border-light)]";
+
+                const parties = normalizePihakTerlibatList(r);
+                const firstParty = parties[0] || {};
+                const extraPartiesCount = Math.max(0, parties.length - 1);
+                const partiesTooltip = formatPihakTerlibatTooltip(parties);
+                const firstVehicleDisplay =
+                  getFirstPartyVehicleDisplay(firstParty);
 
                 return (
                   <tr
@@ -288,13 +404,36 @@ export default function SiasatanTable({
                         {kat}
                       </span>
                     </td>
-                    <td className="py-3 px-2">{r.no_kenderaan}</td>
+                    <td className="py-3 px-2 whitespace-nowrap">
+                      {r.no_report || "-"}
+                    </td>
+                    <td
+                      className="py-3 px-2 whitespace-nowrap"
+                      title={partiesTooltip || undefined}
+                    >
+                      <span>{firstVehicleDisplay}</span>
+                      {extraPartiesCount > 0 && (
+                        <span className="ml-1.5 inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/15 text-sky-300 border border-sky-500/35">
+                          +{extraPartiesCount}
+                        </span>
+                      )}
+                    </td>
                     <td className="py-3 px-2">{r.location_name}</td>
                     <td className="py-3 px-2">{r.tempat_kemalangan}</td>
                     <td className="py-3 px-2">
                       {r.tarikh_kemalangan} {r.waktu_kejadian}
                     </td>
-                    <td className="py-3 px-2">{r.kategori_kenderaan}</td>
+                    <td
+                      className="py-3 px-2 whitespace-nowrap"
+                      title={partiesTooltip || undefined}
+                    >
+                      <span>{firstParty.kategori_kenderaan || "-"}</span>
+                      {extraPartiesCount > 0 && (
+                        <span className="ml-1.5 inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/15 text-sky-300 border border-sky-500/35">
+                          +{extraPartiesCount}
+                        </span>
+                      )}
+                    </td>
                     <td className="py-3 px-2">{r.kesalahan}</td>
                     <td className="py-3 px-2">
                       {r.melibatkan_binatang
@@ -304,6 +443,19 @@ export default function SiasatanTable({
                     <td className="py-3 px-2">{r.jenis_kemalangan}</td>
                     <td className="py-3 px-2">
                       {r.maut ? `Ya (${r.bilangan_maut} nyawa)` : "Tidak"}
+                    </td>
+                    <td className="py-3 px-2 whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePrintRecord(r);
+                        }}
+                        title="Cetak rekod siasatan ini sebagai PDF"
+                        className="cursor-pointer border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] hover:border-[var(--color-accent)] px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors"
+                      >
+                        🖨️ Cetak PDF
+                      </button>
                     </td>
                   </tr>
                 );
@@ -420,7 +572,10 @@ export default function SiasatanTable({
                   type="text"
                   value={formState.no_saman}
                   onChange={(e) =>
-                    setFormState((p) => ({ ...p, no_saman: e.target.value }))
+                    setFormState((p) => ({
+                      ...p,
+                      no_saman: e.target.value.toUpperCase(),
+                    }))
                   }
                   required
                   className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
@@ -456,79 +611,48 @@ export default function SiasatanTable({
                 </select>
               </div>
 
-              {/* 3. No. Kenderaan */}
-              <div className="flex flex-col gap-1.5">
+              {/* 3. No. Report */}
+              <div className="col-span-full flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  3. No. Kenderaan
+                  3. No. Report
                 </label>
                 <input
                   type="text"
-                  value={formState.no_kenderaan}
+                  placeholder="Cth: RPT/00311/26"
+                  value={formState.no_report}
                   onChange={(e) =>
                     setFormState((p) => ({
                       ...p,
-                      no_kenderaan: e.target.value,
+                      no_report: e.target.value.toUpperCase(),
                     }))
                   }
-                  required
+                  required={Boolean(initialFormState?.no_report)}
                   className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
                 />
+                {!initialFormState?.no_report && (
+                  <span className="text-[11px] text-[var(--color-text-secondary)]">
+                    Rekod lama tanpa No. Report — boleh diisi atau dibiarkan kosong.
+                  </span>
+                )}
               </div>
 
-              {/* 4. No. IC */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  4. No. IC
-                </label>
-                <input
-                  type="number"
-                  value={formState.no_ic}
-                  onChange={(e) =>
-                    setFormState((p) => ({ ...p, no_ic: e.target.value }))
-                  }
-                  required
-                  className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
-                />
-              </div>
+              {/* 4. Kenderaan & Pemandu / Pejalan Kaki Terlibat */}
+              <PihakTerlibatBatchInput
+                value={formState.pihak_terlibat}
+                onChange={(nextRows) => {
+                  setModalPihakErrors({});
+                  setFormState((p) => ({ ...p, pihak_terlibat: nextRows }));
+                }}
+                disabled={saving}
+                fieldNumber={4}
+                validationErrors={modalPihakErrors}
+                inputPaddingClass="py-2"
+              />
 
-              {/* 5. Nama */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  5. Nama
-                </label>
-                <input
-                  type="text"
-                  value={formState.nama}
-                  onChange={(e) =>
-                    setFormState((p) => ({ ...p, nama: e.target.value }))
-                  }
-                  required
-                  className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
-                />
-              </div>
-
-              {/* 6. Umur */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  6. Umur
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="120"
-                  value={formState.umur}
-                  onChange={(e) =>
-                    setFormState((p) => ({ ...p, umur: e.target.value }))
-                  }
-                  required
-                  className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
-                />
-              </div>
-
-              {/* 7. Alamat */}
+              {/* 5. Alamat */}
               <div className="col-span-full flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  7. Alamat
+                  5. Alamat
                 </label>
                 <input
                   type="text"
@@ -541,10 +665,10 @@ export default function SiasatanTable({
                 />
               </div>
 
-              {/* 8. Lokasi Hotspot / Jalan */}
+              {/* 6. Lokasi Hotspot / Jalan */}
               <div className="col-span-full flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  8. Lokasi Hotspot / Jalan
+                  6. Lokasi Hotspot / Jalan
                 </label>
                 <select
                   value={formState.location_id}
@@ -605,10 +729,10 @@ export default function SiasatanTable({
                 />
               </div>
 
-              {/* 9. Tarikh Kemalangan */}
+              {/* 7. Tarikh Kemalangan */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  9. Tarikh Kemalangan
+                  7. Tarikh Kemalangan
                 </label>
                 <input
                   type="date"
@@ -624,10 +748,10 @@ export default function SiasatanTable({
                 />
               </div>
 
-              {/* 10. Waktu Kejadian */}
+              {/* 8. Waktu Kejadian */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  10. Waktu Kejadian (HH:MM)
+                  8. Waktu Kejadian (HH:MM)
                 </label>
                 <input
                   type="time"
@@ -643,38 +767,10 @@ export default function SiasatanTable({
                 />
               </div>
 
-              {/* 11. Kategori Kenderaan */}
+              {/* 9. Kesalahan */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  11. Kategori Kenderaan
-                </label>
-                <select
-                  value={formState.kategori_kenderaan}
-                  onChange={(e) =>
-                    setFormState((p) => ({
-                      ...p,
-                      kategori_kenderaan: e.target.value,
-                    }))
-                  }
-                  className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
-                >
-                  <option value="Motosikal">Motosikal</option>
-                  <option value="Kereta">Kereta</option>
-                  <option value="MPV / SUV">MPV / SUV</option>
-                  <option value="Van">Van</option>
-                  <option value="Bas">Bas</option>
-                  <option value="Lori / Kenderaan Berat">
-                    Lori / Kenderaan Berat
-                  </option>
-                  <option value="Basikal">Basikal</option>
-                  <option value="Lain-lain">Lain-lain</option>
-                </select>
-              </div>
-
-              {/* 12. Kesalahan */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  12. Kesalahan (Punca Kemalangan)
+                  9. Kesalahan (Punca Kemalangan)
                 </label>
                 <select
                   value={formState.kesalahan}
@@ -695,10 +791,10 @@ export default function SiasatanTable({
                 </select>
               </div>
 
-              {/* 13. Melibatkan Binatang */}
+              {/* 10. Melibatkan Binatang */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  13. Melibatkan Binatang
+                  10. Melibatkan Binatang
                 </label>
                 <div className="flex gap-4 items-center py-1.5 text-[13px]">
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -758,10 +854,10 @@ export default function SiasatanTable({
                 </div>
               )}
 
-              {/* 14. Jenis Kemalangan */}
+              {/* 11. Jenis Kemalangan */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  14. Jenis Kemalangan
+                  11. Jenis Kemalangan
                 </label>
                 <select
                   value={formState.jenis_kemalangan}
@@ -802,27 +898,44 @@ export default function SiasatanTable({
                 </div>
               )}
 
-              <div className="col-span-full flex justify-end gap-2.5 pt-3 border-t border-[var(--color-table-border)] mt-2">
+              <div className="col-span-full flex items-center justify-between flex-wrap gap-2.5 pt-3 border-t border-[var(--color-table-border)] mt-2">
                 <button
                   type="button"
-                  onClick={closeEditModal}
+                  onClick={() => handlePrintRecord(editingRecord)}
                   disabled={saving}
-                  className="cursor-pointer border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-4 py-2 rounded-[10px] font-semibold text-xs hover:border-[var(--color-accent)]"
+                  title="Cetak rekod siasatan ini sebagai PDF"
+                  className="cursor-pointer border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] hover:border-[var(--color-accent)] px-4 py-2 rounded-[10px] font-semibold text-xs transition-colors disabled:opacity-50"
                 >
-                  Batal
+                  🖨️ Cetak PDF
                 </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="cursor-pointer bg-[var(--color-accent)] text-[#0b1629] border border-[var(--color-accent)] font-bold px-4 py-2 rounded-[10px] text-xs hover:brightness-110 transition-all disabled:opacity-50"
-                >
-                  {saving ? "Menyimpan..." : "Simpan Perubahan"}
-                </button>
+                <div className="flex gap-2.5 ml-auto">
+                  <button
+                    type="button"
+                    onClick={closeEditModal}
+                    disabled={saving}
+                    className="cursor-pointer border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-4 py-2 rounded-[10px] font-semibold text-xs hover:border-[var(--color-accent)]"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="cursor-pointer bg-[var(--color-accent)] text-[#0b1629] border border-[var(--color-accent)] font-bold px-4 py-2 rounded-[10px] text-xs hover:brightness-110 transition-all disabled:opacity-50"
+                  >
+                    {saving ? "Menyimpan..." : "Simpan Perubahan"}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      <SiasatanPrintSheet
+        record={printJob?.record || null}
+        selectedLocation={printLocation}
+        printedAt={printJob?.printedAt || ""}
+      />
     </div>
   );
 }

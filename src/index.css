@@ -99,3 +99,150 @@ body {
   background: linear-gradient(145deg, #081126, var(--color-bg-secondary));
   min-height: 100vh;
 }
+
+#siasatan-print-root {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: auto !important;
+  }
+
+  body.printing-siasatan-record #root {
+    display: none !important;
+  }
+
+  body.printing-siasatan-record #siasatan-print-root {
+    display: block !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .siasatan-print-sheet {
+    font-family: Inter, Arial, sans-serif;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #0f172a;
+    background: #ffffff;
+  }
+
+  .siasatan-print-header {
+    border-bottom: 2px solid #0f172a;
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+  }
+
+  .siasatan-print-eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    color: #334155;
+    text-transform: uppercase;
+  }
+
+  .siasatan-print-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 2px 0 0;
+  }
+
+  .siasatan-print-meta {
+    font-size: 10px;
+    color: #334155;
+    text-align: right;
+  }
+
+  .siasatan-print-banner {
+    border: 1.5px solid #b45309;
+    background: #fef3c7;
+    color: #92400e;
+    padding: 6px 10px;
+    font-weight: 700;
+    font-size: 11px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+  }
+
+  .siasatan-print-table,
+  .siasatan-print-subtable {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .siasatan-print-table th,
+  .siasatan-print-table td,
+  .siasatan-print-subtable th,
+  .siasatan-print-subtable td {
+    border: 1px solid #334155;
+    padding: 5px 8px;
+    vertical-align: top;
+    text-align: left;
+  }
+
+  .siasatan-print-table th.siasatan-print-label {
+    background: #f8fafc;
+    color: #0f172a;
+    font-weight: 700;
+    width: 34%;
+  }
+
+  .siasatan-print-table th.siasatan-print-sublabel {
+    background: #f8fafc;
+    color: #334155;
+    font-weight: 600;
+    padding-left: 20px;
+    width: 34%;
+  }
+
+  .siasatan-print-section-cell {
+    background: #f1f5f9 !important;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .siasatan-print-subtable th {
+    background: #e2e8f0;
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .siasatan-print-subtable td {
+    font-size: 10px;
+  }
+
+  .siasatan-print-row-keep {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .siasatan-print-footer {
+    margin-top: 10px;
+    padding-top: 6px;
+    border-top: 1px solid #94a3b8;
+    font-size: 9.5px;
+    color: #475569;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+}
