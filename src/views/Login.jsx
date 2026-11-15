@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "../auth-context";
+import { useAuth } from "../hooks/useAuth";
 import { dataSourceInfo } from "../fb_cloud_firestore";
 import { seedUsers } from "../data/seedUsers";
 

@@ -13,8 +13,8 @@ Dokumen ini menerangkan secara terperinci siapa yang boleh **melihat**, **mendaf
 | Peranan | Penerangan Ringkas | Contoh Akaun Benih (`seedUsers.js`) | Skop Utama |
 |---|---|---|---|
 | **Awam (`guest`)** | Pelawat yang tidak log masuk | *(Tiada — mod lalai pelawat)* | Paparan baca sahaja di **Dashboard Utama**. |
-| **Siasatan (`Siasatan`)** | Pegawai Bahagian Siasatan | `abdulaziz` *(INSP ABDUL AZIZ BIN ABDUL WAHAB)* | Daftar & kemas kini rekod **Siasatan**, daftar lokasi baharu melalui modal Siasatan, serta lihat **Penguatkuasaan** (baca sahaja). |
-| **Penguatkuasaan (`Penguatkuasaan`)** | Pegawai Bahagian Penguatkuasaan / Operasi | `cornelius` *(SJN CORNELIUS A/K BIDAK)* | Daftar & kemas kini rekod **Penguatkuasaan** (termasuk kelompok saman, import CSV & lokasi `"Lain-lain"`), serta lihat & cetak PDF rekod **Siasatan** (baca sahaja). |
+| **Siasatan (`Siasatan`)** | Pegawai Bahagian Siasatan | `abdulaziz` *(INSP ABDUL AZIZ BIN ABDUL WAHAB)* | Daftar & kemas kini rekod **Siasatan**, daftar lokasi baharu melalui modal Siasatan, tapis & cetak PDF **9 Elemen Data Kemalangan**, serta lihat & cetak PDF senarai **Penguatkuasaan** (baca sahaja). |
+| **Penguatkuasaan (`Penguatkuasaan`)** | Pegawai Bahagian Penguatkuasaan / Operasi | `cornelius` *(SJN CORNELIUS A/K BIDAK)* | Daftar & kemas kini rekod **Penguatkuasaan** (termasuk kelompok saman, import CSV, lokasi `"Lain-lain"`, penapis tempoh & cetak PDF senarai operasi), serta lihat & cetak PDF **9 Elemen** / rekod **Siasatan** (baca sahaja). |
 | **Admin (`Admin`)** | Pentadbir Sistem / Pegawai Pemerintah BSPT | `thangaraja` *(ASP THANGARAJA A/L BALARAMAN)*, `admin` *(Admin)* | Akses penuh ke semua 4 modul termasuk pengurusan induk **Lokasi & Lampiran Blackspot**. |
 
 ---
@@ -55,12 +55,13 @@ Dokumen ini menerangkan secara terperinci siapa yang boleh **melihat**, **mendaf
 | Ciri / Tindakan | Awam (`guest`) | `Siasatan` | `Penguatkuasaan` | `Admin` | Catatan |
 |---|:---:|:---:|:---:|:---:|---|
 | Akses Halaman `Siasatan` | ❌ | ✅ | ✅ | ✅ | Awam disekat oleh `ProtectedRoute`. |
-| Isi & Hantar **`Borang Input Data Siasatan`** (Medan `1`–`11`, termasuk `2. Kategori Saman`, `3. No. Report` & `4. Kenderaan & Pemandu / Pejalan Kaki Terlibat`) | ❌ | ✅ | ❌ | ✅ | `Penguatkuasaan` melihat sepanduk `🔒 Mod Paparan Sahaja (Penguatkuasaan)`. |
-| Klik **`+ Tambah Lokasi`** dalam Borang Siasatan (Daftar Lokasi Baharu) | ❌ | ✅ | ❌ | ✅ | Membuka modal pendaftaran lokasi; lokasi aktif baharu terus dipilih dalam medan `6` (`Lokasi Hotspot / Jalan`). |
-| Lihat & Kembang/Tutup **`9 Elemen Data Kemalangan`** | ❌ | ✅ | 👁️ | ✅ | Elemen 4–9 memuatkan kiraan Firestore apabila dikembangkan (`7. Kategori kenderaan` dalam unit `kenderaan`). |
-| Lihat **`Senarai Rekod Siasatan`**, Tukar Susunan (`↓`/`↑`) & Paginasi | ❌ | ✅ | 👁️ | ✅ | Memaparkan lajur termasuk lencana `Kategori Saman`, `No. Report`, dan lencana `+N` pihak terlibat. |
+| Isi & Hantar **`Borang Input Data Siasatan`** (Medan `1`–`10`, termasuk `2. Kategori Saman`, `3. No. Report`, `4. Kenderaan & Pemandu / Pejalan Kaki Terlibat` & lokasi `"Lain-lain"`) | ❌ | ✅ | ❌ | ✅ | `Penguatkuasaan` melihat sepanduk `🔒 Mod Paparan Sahaja (Penguatkuasaan)`. |
+| Klik **`+ Tambah Lokasi`** dalam Borang Siasatan (Daftar Lokasi Baharu) | ❌ | ✅ | ❌ | ✅ | Membuka modal pendaftaran lokasi; lokasi aktif baharu terus dipilih dalam medan `5` (`Lokasi Hotspot / Jalan`). |
+| Lihat, Tapis Tempoh (`Tiada` / `Mingguan` / `Bulanan` / `Suku Tahun`) & Kembang/Tutup **`9 Elemen Data Kemalangan`** | ❌ | ✅ | 👁️ | ✅ | Menapis berdasarkan `6. Tarikh Kemalangan` (lalai `Tiada`). Elemen 4–9 memuatkan kiraan apabila dikembangkan (`7. Kategori kenderaan` dalam unit `kenderaan`); `Senarai Rekod Siasatan` & `Faktor Penyumbang Direkodkan` kekal sepanjang masa. |
+| Cetak PDF **`9 Elemen Data Kemalangan`** (`🖨️ Cetak PDF`) | ❌ | ✅ | ✅ *(Baca sahaja)* | ✅ | Menjana cetakan A4 Potret berlatar putih dengan kesemua pecahan Elemen 4–9 dikembangkan (termasuk kategori `0 kes`/`0 kenderaan`) mengikut penapis tempoh aktif. Butang kekal aktif walaupun `0 kes`. |
+| Lihat **`Senarai Rekod Siasatan`**, Tukar Susunan (`↓`/`↑`) & Paginasi | ❌ | ✅ | 👁️ | ✅ | Memaparkan lajur termasuk lencana `Kategori Saman`, `No. Report`, lencana `Lain-lain`, dan lencana `+N` pihak terlibat. |
 | Kemas Kini Rekod Siasatan (Klik baris → Modal **`Kemaskini Rekod Siasatan`**) | ❌ | ✅ | ❌ | ✅ | Klik baris tidak membuka modal bagi `Penguatkuasaan`. |
-| Cetak PDF Rekod Siasatan Tunggal (`🖨️ Cetak PDF` pada lajur `Tindakan` / modal suntingan) | ❌ | ✅ | ✅ *(Dari Jadual)* | ✅ | Menjana cetakan A4 berlatar putih (jadual HTML) bersama sepanduk `DATA SIMULASI — BUKAN IPRS SEBENAR`, butiran medan `1`–`11`, dan senarai penuh `pihak_terlibat`. |
+| Cetak PDF Rekod Siasatan Tunggal (`🖨️ Cetak PDF` pada lajur `Tindakan` / modal suntingan) | ❌ | ✅ | ✅ *(Dari Jadual)* | ✅ | Menjana cetakan A4 berlatar putih (jadual HTML) bersama sepanduk `DATA SIMULASI — BUKAN IPRS SEBENAR`, butiran medan `1`–`10`, dan senarai penuh `pihak_terlibat`. |
 | Lihat Carta **`Faktor Penyumbang Direkodkan`** | ❌ | ✅ | 👁️ | ✅ | Kiraan peratusan dinamik daripada punca kemalangan siasatan. |
 | Padam Rekod Siasatan dalam UI | ❌ | ❌ | ❌ | ❌ | Tiada butang padam dalam antara muka pengguna untuk mana-mana peranan. |
 
@@ -71,7 +72,8 @@ Dokumen ini menerangkan secara terperinci siapa yang boleh **melihat**, **mendaf
 | Akses Halaman `Penguatkuasaan` | ❌ | ✅ | ✅ | ✅ | Awam disekat oleh `ProtectedRoute`. |
 | Isi & Hantar **`Borang Input Penguatkuasaan`** (Medan `1`–`9`) | ❌ | ❌ | ✅ | ✅ | `Siasatan` melihat sepanduk `🔒 Mod Paparan Sahaja (Siasatan)`. |
 | Guna Medan **`9. Saman`** (`+ Tambah Saman`, `↓ Muat Turun Templat CSV`, `↑ Import CSV`, Ganti/Tambah Senarai) | ❌ | ❌ | ✅ | ✅ | Mengesahkan `no`, `nombor_saman`, dan `kategori_saman` (`POL 170 A` / `POL 257`). |
-| Lihat **`Senarai Rekod Penguatkuasaan`**, Pecahan Saman, Tukar Susunan (`↓`/`↑`) & Paginasi | ❌ | 👁️ | ✅ | ✅ | Memaparkan jumlah saman dan pecahan kategori dengan tooltip penuh. |
+| Lihat, Tapis Tempoh (`Tiada` / `Mingguan` / `Bulanan` / `Suku Tahun`), Pecahan Saman, Susunan (`↓`/`↑`) & Paginasi **`Senarai Rekod Penguatkuasaan`** | ❌ | 👁️ | ✅ | ✅ | Menapis berdasarkan `1. Tarikh` (lalai `Tiada`) dengan jumlah saman, pecahan kategori, lencana `Lain-lain`, dan paginasi 5 rekod/halaman. |
+| Cetak PDF **`Senarai Rekod Penguatkuasaan`** (`🖨️ Cetak PDF`) | ❌ | ✅ *(Baca sahaja)* | ✅ | ✅ | Menjana cetakan A4 Landskap berbilang halaman bagi **kesemua** operasi dalam penapis tempoh aktif (senarai saman tidak dipendekkan serta baris `JUMLAH` saman mentah & unik). Butang dinyahdayakan apabila `0 operasi`. |
 | Kemas Kini Operasi (Klik baris → Modal **`Kemaskini Rekod Penguatkuasaan`**) | ❌ | ❌ | ✅ | ✅ | Klik baris tidak membuka modal bagi `Siasatan`. |
 | Padam Rekod Penguatkuasaan dalam UI | ❌ | ❌ | ❌ | ❌ | Tiada butang padam dalam antara muka pengguna untuk mana-mana peranan. |
 
@@ -119,6 +121,6 @@ Jadual ini menerangkan penguatkuasaan hak capaian pada **peringkat pelayan/pangk
 ## 5. Ringkasan Pantas: Siapa Boleh Ubah Apa?
 
 1. **Awam (`guest`)**: Hanya melihat Dashboard Utama, menggunakan penapis tempoh, menukar mod graf trend, menjana rumusan AI lokasi, dan mengeksport ringkasan CSV. Tidak boleh melihat atau mengubah tab `Siasatan`, `Penguatkuasaan`, dan `Lokasi`.
-2. **Pegawai `Siasatan`**: Boleh mendaftar & mengemas kini rekod `Siasatan` serta menambah lokasi baharu melalui modal `+ Tambah Lokasi` di borang Siasatan. Boleh melihat data `Penguatkuasaan` dalam mod baca sahaja, tetapi tidak boleh membuka atau mengubah tab `Lokasi`.
-3. **Pegawai `Penguatkuasaan`**: Boleh mendaftar & mengemas kini operasi `Penguatkuasaan` (termasuk kelompok saman, muat turun/import CSV, dan lokasi `"Lain-lain"`). Boleh melihat data `Siasatan` dalam mod baca sahaja serta mencetak PDF rekod siasatan tunggal (`🖨️ Cetak PDF`), tetapi tidak boleh membuka atau mengubah tab `Lokasi`.
+2. **Pegawai `Siasatan`**: Boleh mendaftar & mengemas kini rekod `Siasatan`, menambah lokasi baharu melalui modal `+ Tambah Lokasi` di borang Siasatan, serta menapis tempoh dan mencetak PDF **`9 Elemen Data Kemalangan`** & rekod tunggal. Boleh melihat data `Penguatkuasaan` dalam mod baca sahaja termasuk menapis tempoh & mencetak PDF senarai operasi (`🖨️ Cetak PDF`), tetapi tidak boleh membuka atau mengubah tab `Lokasi`.
+3. **Pegawai `Penguatkuasaan`**: Boleh mendaftar & mengemas kini operasi `Penguatkuasaan` (termasuk kelompok saman, muat turun/import CSV, dan lokasi `"Lain-lain"`), serta menapis tempoh & mencetak PDF senarai operasi. Boleh melihat data `Siasatan` dalam mod baca sahaja serta mencetak PDF **`9 Elemen Data Kemalangan`** dan rekod siasatan tunggal (`🖨️ Cetak PDF`), tetapi tidak boleh membuka atau mengubah tab `Lokasi`.
 4. **Pegawai `Admin`**: Mempunyai kuasa penuh untuk melihat, mendaftar, dan mengemas kini kesemua modul (**Dashboard**, **Siasatan**, **Penguatkuasaan**, dan **Lokasi**) termasuk pengaktifan/penyahaktifan lokasi hotspot dan Lampiran Blackspot.

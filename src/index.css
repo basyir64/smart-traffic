@@ -100,7 +100,9 @@ body {
   min-height: 100vh;
 }
 
-#siasatan-print-root {
+#siasatan-print-root,
+#siasatan-agg-print-root,
+#penguatkuasaan-print-root {
   display: none;
 }
 
@@ -119,11 +121,15 @@ body {
     min-height: auto !important;
   }
 
-  body.printing-siasatan-record #root {
+  body.printing-siasatan-record #root,
+  body.printing-siasatan-agg #root,
+  body.printing-penguatkuasaan-list #root {
     display: none !important;
   }
 
-  body.printing-siasatan-record #siasatan-print-root {
+  body.printing-siasatan-record #siasatan-print-root,
+  body.printing-siasatan-agg #siasatan-agg-print-root,
+  body.printing-penguatkuasaan-list #penguatkuasaan-print-root {
     display: block !important;
     background: #ffffff !important;
     color: #0f172a !important;
@@ -132,6 +138,9 @@ body {
   }
 
   .siasatan-print-sheet {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
     font-family: Inter, Arial, sans-serif;
     font-size: 11px;
     line-height: 1.4;
@@ -158,7 +167,7 @@ body {
   }
 
   .siasatan-print-title {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 800;
     color: #0f172a;
     margin: 2px 0 0;
@@ -168,6 +177,7 @@ body {
     font-size: 10px;
     color: #334155;
     text-align: right;
+    flex-shrink: 0;
   }
 
   .siasatan-print-banner {
@@ -233,6 +243,143 @@ body {
   .siasatan-print-row-keep {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  .siasatan-agg-kpi-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin-bottom: 8px;
+  }
+
+  .siasatan-agg-kpi-table th,
+  .siasatan-agg-kpi-table td {
+    border: 1px solid #334155;
+    padding: 4px 8px;
+    text-align: left;
+  }
+
+  .siasatan-agg-kpi-table th {
+    background: #e2e8f0 !important;
+    color: #0f172a;
+    font-size: 9.5px;
+    font-weight: 700;
+  }
+
+  .siasatan-agg-kpi-table td {
+    background: #f8fafc !important;
+    color: #0f172a;
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .siasatan-agg-print-cols {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .siasatan-agg-print-col {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .siasatan-agg-print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5px;
+    line-height: 1.25;
+  }
+
+  .siasatan-agg-print-table thead {
+    display: table-header-group;
+  }
+
+  .siasatan-agg-print-table th,
+  .siasatan-agg-print-table td {
+    border: 1px solid #334155;
+    padding: 3.5px 6px;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .siasatan-agg-print-table th:last-child,
+  .siasatan-agg-print-table td:last-child {
+    width: 1%;
+    white-space: nowrap;
+    text-align: right;
+  }
+
+  .siasatan-agg-print-table thead th {
+    background: #e2e8f0 !important;
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 9.5px;
+  }
+
+  .siasatan-agg-print-parent td,
+  .siasatan-agg-print-parent th {
+    background: #f1f5f9 !important;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .siasatan-agg-print-child td {
+    background: #ffffff;
+    font-size: 9.5px;
+  }
+
+  .siasatan-agg-print-child td:first-child {
+    padding-left: 14px;
+    color: #334155;
+  }
+
+  .penguatkuasaan-print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5px;
+    line-height: 1.32;
+  }
+
+  .penguatkuasaan-print-table thead {
+    display: table-header-group;
+  }
+
+  .penguatkuasaan-print-table th,
+  .penguatkuasaan-print-table td {
+    border: 1px solid #334155;
+    padding: 4px 6px;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .penguatkuasaan-print-table thead th {
+    background: #e2e8f0 !important;
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 9.5px;
+    white-space: nowrap;
+  }
+
+  .penguatkuasaan-print-summary-row td,
+  .penguatkuasaan-print-summary-row th {
+    background: #f1f5f9 !important;
+    font-weight: 700;
+    color: #0f172a;
+    border-top: 2px solid #0f172a;
+  }
+
+  .print-custom-badge {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 0 4px;
+    font-size: 8.5px;
+    font-weight: 700;
+    border: 1px solid #64748b;
+    border-radius: 3px;
+    color: #334155;
+    background: #f1f5f9;
   }
 
   .siasatan-print-footer {

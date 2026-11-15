@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { AuthContext } from "./hooks/useAuth";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -18,8 +19,6 @@ import {
 import { auth, db, dataSourceInfo } from "./fb_cloud_firestore";
 import { seedUsers } from "./data/seedUsers";
 import { bootstrapFirestoreData } from "./services/bootstrapData";
-
-const AuthContext = createContext(null);
 
 async function resolveUserProfile(firebaseUser) {
   if (!firebaseUser) return null;
@@ -207,12 +206,4 @@ export function AuthProvider({ children }) {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used inside AuthProvider");
-  }
-  return ctx;
 }

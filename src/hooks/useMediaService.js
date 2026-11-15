@@ -51,7 +51,7 @@ export function useMediaService() {
         try {
             const res = await fetch(url, { method: "HEAD" });
             return res.ok; // true if status is 200–299
-        } catch (err) {
+        } catch {
             return false; // network error
         }
     }

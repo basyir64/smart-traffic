@@ -18,10 +18,15 @@ import { db } from "../fb_cloud_firestore";
 import { bootstrapFirestoreData } from "../services/bootstrapData";
 import { getPeriodQueryConstraints } from "./usePeriodData";
 import { coerceStoredSamanCategory } from "../utils/saman";
+import { CUSTOM_LOCATION_ID } from "../utils/locations";
 import {
   normalizePihakTerlibatList,
-  countVehicleCategoriesFromRecords,
-  countUniqueAgeBracketsFromRecords,
+  COLLAPSIBLE_NINE_ELEMENTS,
+  NINE_ELEMENT_ROAD_TYPES,
+  NINE_ELEMENT_ANIMALS,
+  NINE_ELEMENT_FAULTS,
+  computeNineElementsSummary,
+  computeElementSubItems,
 } from "../utils/siasatan";
 
 export const SIASATAN_PAGE_SIZE = 5;
@@ -31,6 +36,18 @@ export function normalizeSiasatan(raw) {
   const kategori_saman = coerceStoredSamanCategory(raw.kategori_saman);
   const no_report = String(raw.no_report || "").trim().toUpperCase();
   const pihak_terlibat = normalizePihakTerlibatList(raw);
+  const location_id = raw.location_id || "";
+  const is_custom_location = Boolean(
+    raw.is_custom_location || location_id === CUSTOM_LOCATION_ID
+  );
+  const nama_jalan = is_custom_location
+    ? String(raw.nama_jalan || raw.location_name || "")
+        .trim()
+        .toUpperCase()
+    : "";
+  const location_name = is_custom_location
+    ? nama_jalan
+    : raw.location_name || "";
   const melibatkan_binatang = Boolean(raw.melibatkan_binatang);
   const jenis_kemalangan = raw.jenis_kemalangan || "Rosak sahaja";
   const maut = Boolean(raw.maut ?? jenis_kemalangan === "Maut");
@@ -44,10 +61,11 @@ export function normalizeSiasatan(raw) {
     kategori_saman,
     no_report,
     pihak_terlibat,
-    alamat: raw.alamat || "",
+    is_custom_location,
+    nama_jalan,
     tempat_kemalangan: raw.tempat_kemalangan || "Persekutuan",
-    location_id: raw.location_id || "",
-    location_name: raw.location_name || "",
+    location_id: is_custom_location ? CUSTOM_LOCATION_ID : location_id,
+    location_name,
     tarikh_kemalangan: raw.tarikh_kemalangan || "",
     waktu_kejadian: raw.waktu_kejadian || "",
     kesalahan: raw.kesalahan || "Kelajuan",
@@ -235,18 +253,7 @@ export function useSiasatan() {
       );
 
       const docs = await loadByQuery(constraints);
-      const totalCases = docs.length;
-      const fatalCases = docs.filter((r) => r.maut).length;
-      const totalDeaths = docs.reduce(
-        (sumDeaths, r) => sumDeaths + (r.maut ? r.bilangan_maut : 0),
-        0
-      );
-      const animalCases = docs.filter((r) => r.melibatkan_binatang).length;
-      const totalVehicles = docs.reduce(
-        (sumVehicles, r) => sumVehicles + normalizePihakTerlibatList(r).length,
-        0
-      );
-      return { totalCases, fatalCases, totalDeaths, animalCases, totalVehicles };
+      return computeNineElementsSummary(docs);
     },
     [loadByQuery]
   );
@@ -260,43 +267,27 @@ export function useSiasatan() {
         period
       );
 
-      // When period === 'all', Elements 4, 6, 7, 9 can use server-side getCountFromServer per category
+      // When period === 'all', Elements 4, 6, 9 can use server-side getCountFromServer per category
       if (period === "all") {
         if (elementNumber === 4) {
-          const types = [
-            ["- Lebuhraya", "Lebuh Raya"],
-            ["- Persekutuan", "Persekutuan"],
-            ["- Negeri", "Negeri"],
-            ["- Lain-lain", "Lain-lain"],
-          ];
           return Promise.all(
-            types.map(async ([label, val]) => ({
+            NINE_ELEMENT_ROAD_TYPES.map(async ([label, val]) => ({
               label,
               value: `${await countAllSiasatan([where("tempat_kemalangan", "==", val)])} kes`,
             }))
           );
         }
         if (elementNumber === 6) {
-          const animals = ["Kerbau", "Lembu", "Babi", "Lain-lain"];
           return Promise.all(
-            animals.map(async (animal) => ({
+            NINE_ELEMENT_ANIMALS.map(async (animal) => ({
               label: `- ${animal}`,
               value: `${await countAllSiasatan([where("jenis_binatang", "==", animal)])} kes`,
             }))
           );
         }
         if (elementNumber === 9) {
-          const faults = [
-            "Kelajuan",
-            "Tidak peka keadaan sekeliling",
-            "Gagal patuh isyarat",
-            "Keadaan jalan",
-            "Langgar binatang",
-            "Faktor kenderaan",
-            "Lain-lain",
-          ];
           return Promise.all(
-            faults.map(async (fault) => ({
+            NINE_ELEMENT_FAULTS.map(async (fault) => ({
               label: `- ${fault}`,
               value: `${await countAllSiasatan([where("kesalahan", "==", fault)])} kes`,
             }))
@@ -306,105 +297,28 @@ export function useSiasatan() {
 
       // Query period-filtered records on demand when this element is expanded
       const docs = await loadByQuery(dateConstraints);
-      const countWhere = (fn) => docs.filter(fn).length;
-
-      const isInTimeBucket = (timeStr, minMin, maxMin) => {
-        if (!timeStr) return false;
-        if (timeStr === "00:00" && minMin === 0) return true;
-        const parts = String(timeStr).split(":");
-        if (parts.length < 2) return false;
-        const m = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-        return !isNaN(m) && m >= minMin && m <= maxMin;
-      };
-
-      switch (elementNumber) {
-        case 4:
-          return [
-            {
-              label: "- Lebuhraya",
-              value: `${countWhere((r) => r.tempat_kemalangan === "Lebuh Raya")} kes`,
-            },
-            {
-              label: "- Persekutuan",
-              value: `${countWhere((r) => r.tempat_kemalangan === "Persekutuan")} kes`,
-            },
-            {
-              label: "- Negeri",
-              value: `${countWhere((r) => r.tempat_kemalangan === "Negeri")} kes`,
-            },
-            {
-              label: "- Lain-lain",
-              value: `${countWhere((r) => r.tempat_kemalangan === "Lain-lain")} kes`,
-            },
-          ];
-        case 5:
-          return [
-            {
-              label: "- 0000-0400",
-              value: `${countWhere((r) => isInTimeBucket(r.waktu_kejadian, 0, 240))} kes`,
-            },
-            {
-              label: "- 0401-0800",
-              value: `${countWhere((r) => isInTimeBucket(r.waktu_kejadian, 241, 480))} kes`,
-            },
-            {
-              label: "- 0801-1200",
-              value: `${countWhere((r) => isInTimeBucket(r.waktu_kejadian, 481, 720))} kes`,
-            },
-            {
-              label: "- 1201-1600",
-              value: `${countWhere((r) => isInTimeBucket(r.waktu_kejadian, 721, 960))} kes`,
-            },
-            {
-              label: "- 1601-2000",
-              value: `${countWhere((r) => isInTimeBucket(r.waktu_kejadian, 961, 1200))} kes`,
-            },
-            {
-              label: "- 2001-2400",
-              value: `${countWhere((r) => isInTimeBucket(r.waktu_kejadian, 1201, 1439))} kes`,
-            },
-          ];
-        case 6:
-          return [
-            {
-              label: "- Kerbau",
-              value: `${countWhere((r) => r.melibatkan_binatang && r.jenis_binatang === "Kerbau")} kes`,
-            },
-            {
-              label: "- Lembu",
-              value: `${countWhere((r) => r.melibatkan_binatang && r.jenis_binatang === "Lembu")} kes`,
-            },
-            {
-              label: "- Babi",
-              value: `${countWhere((r) => r.melibatkan_binatang && r.jenis_binatang === "Babi")} kes`,
-            },
-            {
-              label: "- Lain-lain",
-              value: `${countWhere((r) => r.melibatkan_binatang && r.jenis_binatang === "Lain-lain")} kes`,
-            },
-          ];
-        case 7:
-          return countVehicleCategoriesFromRecords(docs);
-        case 8:
-          return countUniqueAgeBracketsFromRecords(docs);
-        case 9:
-          return [
-            "Kelajuan",
-            "Tidak peka keadaan sekeliling",
-            "Gagal patuh isyarat",
-            "Keadaan jalan",
-            "Langgar binatang",
-            "Faktor kenderaan",
-            "Lain-lain",
-          ].map((fault) => ({
-            label: `- ${fault}`,
-            value: `${countWhere((r) => r.kesalahan === fault)} kes`,
-          }));
-        default:
-          return [];
-      }
+      return computeElementSubItems(elementNumber, docs);
     },
     [countAllSiasatan, loadByQuery]
+  );
+
+  // Single-query loader for printing 9 Elemen Data Kemalangan with all Elements 4..9 expanded
+  const loadAllNineElements = useCallback(
+    async (period = "all") => {
+      await bootstrapFirestoreData();
+      const dateConstraints = getPeriodQueryConstraints(
+        "tarikh_kemalangan",
+        period
+      );
+      const docs = await loadByQuery(dateConstraints);
+      const summary = computeNineElementsSummary(docs);
+      const subItemsByElement = {};
+      COLLAPSIBLE_NINE_ELEMENTS.forEach(({ number }) => {
+        subItemsByElement[number] = computeElementSubItems(number, docs);
+      });
+      return { summary, subItemsByElement };
+    },
+    [loadByQuery]
   );
 
   const addSiasatan = useCallback(
@@ -469,6 +383,7 @@ export function useSiasatan() {
     countAllSiasatan,
     loadSummaryMetrics,
     loadElementSubItems,
+    loadAllNineElements,
     addSiasatan,
     updateSiasatan,
   };

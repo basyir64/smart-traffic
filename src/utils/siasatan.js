@@ -3,6 +3,7 @@
  * for Siasatan (`pihak_terlibat` multi-party records & 9-Elemen computations).
  */
 import { coerceStoredSamanCategory } from "./saman.js";
+import { CUSTOM_LOCATION_ID } from "./locations.js";
 
 export const VEHICLE_CATEGORIES = [
   "Motosikal",
@@ -288,6 +289,110 @@ export function countUniqueAgeBracketsFromRecords(docs = []) {
   return rows;
 }
 
+export const COLLAPSIBLE_NINE_ELEMENTS = [
+  { number: 4, title: "4. Jenis jalan" },
+  { number: 5, title: "5. Waktu kejadian" },
+  { number: 6, title: "6. Kemalangan melibatkan binatang" },
+  { number: 7, title: "7. Kategori kenderaan" },
+  { number: 8, title: "8. Kategori umur" },
+  { number: 9, title: "9. Punca kemalangan (Kesalahan)" },
+];
+
+export const NINE_ELEMENT_ROAD_TYPES = [
+  ["- Lebuhraya", "Lebuh Raya"],
+  ["- Persekutuan", "Persekutuan"],
+  ["- Negeri", "Negeri"],
+  ["- Lain-lain", "Lain-lain"],
+];
+
+export const NINE_ELEMENT_ANIMALS = ["Kerbau", "Lembu", "Babi", "Lain-lain"];
+
+export const NINE_ELEMENT_FAULTS = [
+  "Kelajuan",
+  "Tidak peka keadaan sekeliling",
+  "Gagal patuh isyarat",
+  "Keadaan jalan",
+  "Langgar binatang",
+  "Faktor kenderaan",
+  "Lain-lain",
+];
+
+const NINE_ELEMENT_TIME_BUCKETS = [
+  ["- 0000-0400", 0, 240],
+  ["- 0401-0800", 241, 480],
+  ["- 0801-1200", 481, 720],
+  ["- 1201-1600", 721, 960],
+  ["- 1601-2000", 961, 1200],
+  ["- 2001-2400", 1201, 1439],
+];
+
+function isTimeInMinutesRange(timeStr, minMin, maxMin) {
+  if (!timeStr) return false;
+  if (timeStr === "00:00" && minMin === 0) return true;
+  const parts = String(timeStr).split(":");
+  if (parts.length < 2) return false;
+  const mins = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+  return !Number.isNaN(mins) && mins >= minMin && mins <= maxMin;
+}
+
+/**
+ * Computes top-level summary metrics for 9 Elemen Data Kemalangan from a document slice.
+ */
+export function computeNineElementsSummary(docs = []) {
+  const totalCases = docs.length;
+  const fatalCases = docs.filter((r) => Boolean(r.maut)).length;
+  const totalDeaths = docs.reduce(
+    (sumDeaths, r) => sumDeaths + (r.maut ? Number(r.bilangan_maut ?? 0) : 0),
+    0
+  );
+  const animalCases = docs.filter((r) => Boolean(r.melibatkan_binatang)).length;
+  const totalVehicles = docs.reduce(
+    (sumVehicles, r) => sumVehicles + normalizePihakTerlibatList(r).length,
+    0
+  );
+  return { totalCases, fatalCases, totalDeaths, animalCases, totalVehicles };
+}
+
+/**
+ * Computes breakdown child rows (including zero-count rows) for Elements 4–9 from a document slice.
+ */
+export function computeElementSubItems(elementNumber, docs = []) {
+  const countWhere = (predicate) => docs.filter(predicate).length;
+
+  switch (elementNumber) {
+    case 4:
+      return NINE_ELEMENT_ROAD_TYPES.map(([label, val]) => ({
+        label,
+        value: `${countWhere((r) => r.tempat_kemalangan === val)} kes`,
+      }));
+    case 5:
+      return NINE_ELEMENT_TIME_BUCKETS.map(([label, minMin, maxMin]) => ({
+        label,
+        value: `${countWhere((r) =>
+          isTimeInMinutesRange(r.waktu_kejadian, minMin, maxMin)
+        )} kes`,
+      }));
+    case 6:
+      return NINE_ELEMENT_ANIMALS.map((animal) => ({
+        label: `- ${animal}`,
+        value: `${countWhere(
+          (r) => Boolean(r.melibatkan_binatang) && r.jenis_binatang === animal
+        )} kes`,
+      }));
+    case 7:
+      return countVehicleCategoriesFromRecords(docs);
+    case 8:
+      return countUniqueAgeBracketsFromRecords(docs);
+    case 9:
+      return NINE_ELEMENT_FAULTS.map((fault) => ({
+        label: `- ${fault}`,
+        value: `${countWhere((r) => r.kesalahan === fault)} kes`,
+      }));
+    default:
+      return [];
+  }
+}
+
 /**
  * Formats a clean document title used by browsers as the default Save-as-PDF filename.
  */
@@ -299,8 +404,8 @@ export function formatPrintDocumentTitle(record) {
 }
 
 /**
- * Builds structured fields `1`–`11` and multi-party table rows for A4 PDF printing,
- * handling legacy scalar records and resolved master location details safely.
+ * Builds structured fields `1`–`10` and multi-party table rows for A4 PDF printing,
+ * handling legacy scalar records, custom `"Lain-lain"` locations, and resolved master location details safely.
  */
 export function buildSiasatanPrintModel(
   record = {},
@@ -324,6 +429,9 @@ export function buildSiasatanPrintModel(
         : String(Number(p.bilangan_penumpang ?? 0)),
   }));
 
+  const isCustomLocation = Boolean(
+    record?.is_custom_location || record?.location_id === CUSTOM_LOCATION_ID
+  );
   const isAnimal = Boolean(record?.melibatkan_binatang);
   const isMaut = record?.jenis_kemalangan === "Maut" || Boolean(record?.maut);
 
@@ -347,36 +455,40 @@ export function buildSiasatanPrintModel(
     partiesTitle: "4. Kenderaan & Pemandu / Pejalan Kaki Terlibat",
     parties,
     fieldsBottom: [
-      { label: "5. Alamat", value: record?.alamat || "-" },
       {
-        label: "6. Lokasi Hotspot / Jalan",
-        value: selectedLocation?.name || record?.location_name || "-",
+        label: "5. Lokasi Hotspot / Jalan",
+        value: isCustomLocation
+          ? "Lain-lain"
+          : selectedLocation?.name || record?.location_name || "-",
       },
       {
         label: "Nama Jalan",
-        value: selectedLocation?.route || "-",
+        value: isCustomLocation
+          ? record?.nama_jalan || record?.location_name || "-"
+          : selectedLocation?.route || "-",
         isSubField: true,
       },
       {
         label: "Jenis Jalan",
-        value:
-          selectedLocation?.road_type || record?.tempat_kemalangan || "-",
+        value: isCustomLocation
+          ? record?.tempat_kemalangan || "-"
+          : selectedLocation?.road_type || record?.tempat_kemalangan || "-",
         isSubField: true,
       },
       {
-        label: "7. Tarikh Kemalangan",
+        label: "6. Tarikh Kemalangan",
         value: record?.tarikh_kemalangan || "-",
       },
       {
-        label: "8. Waktu Kejadian (HH:MM)",
+        label: "7. Waktu Kejadian (HH:MM)",
         value: record?.waktu_kejadian || "-",
       },
       {
-        label: "9. Kesalahan (Punca Kemalangan)",
+        label: "8. Kesalahan (Punca Kemalangan)",
         value: record?.kesalahan || "-",
       },
       {
-        label: "10. Melibatkan Binatang",
+        label: "9. Melibatkan Binatang",
         value: isAnimal ? "Ya" : "Tidak",
       },
       ...(isAnimal
@@ -389,7 +501,7 @@ export function buildSiasatanPrintModel(
           ]
         : []),
       {
-        label: "11. Jenis Kemalangan",
+        label: "10. Jenis Kemalangan",
         value: record?.jenis_kemalangan || "-",
       },
       ...(isMaut

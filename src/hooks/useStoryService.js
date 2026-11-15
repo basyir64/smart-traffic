@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { collection, getDocs, query, addDoc, orderBy, startAfter, limit, updateDoc, increment, doc, getCountFromServer, getAggregateFromServer, sum, runTransaction } from "firebase/firestore";
+import { useState } from "react";
+import { collection, getDocs, query, startAfter, limit, increment, doc, getCountFromServer, getAggregateFromServer, sum, runTransaction } from "firebase/firestore";
 import { db } from "../fb_cloud_firestore";
 
 // MAKE SURE NPM RUN DEV IS NOT RUNNING WHEN STARTING OR STOPPING EMULATOR

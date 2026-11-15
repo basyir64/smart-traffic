@@ -192,6 +192,17 @@ export function summarizeSamanCategories(samanList = []) {
 }
 
 /**
+ * Formats non-zero saman category counts into display strings (`["POL 170 A (2)", ...]`).
+ */
+export function formatSamanCategoryBreakdown(summary = {}) {
+  const parts = [];
+  if (summary.pol170a > 0) parts.push(`POL 170 A (${summary.pol170a})`);
+  if (summary.pol257 > 0) parts.push(`POL 257 (${summary.pol257})`);
+  if (summary.unset > 0) parts.push(`${UNSET_SAMAN_CATEGORY} (${summary.unset})`);
+  return parts;
+}
+
+/**
  * Aggregates all summons across active-period `siasatan` and `penguatkuasaan`
  * documents, deduplicating identical `no_saman` entries case-insensitively.
  */

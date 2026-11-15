@@ -1026,6 +1026,149 @@ To be prioritized and implemented after the conclusion of the First Round of UAT
 
 ---
 
+### UAT Round 4 — Development Phases ✅ COMPLETED (2026-11-15)
+
+> [!IMPORTANT]
+> **Fourth Round of User Acceptance Testing (UAT 4) Scope — ✅ COMPLETED (2026-11-15)**:
+> Tracks new operational requirements following UAT Round 3 completion.
+> All UAT Round 4 phases (Phases 1–2) are implemented, verified (targeted ESLint 0 errors/warnings + production build passed), and signed off after UAT.
+
+#### UAT 4 · Phase 1 — Siasatan Custom `"Lain-lain"` Location & Removal of `5. Alamat` ✅ COMPLETED (2026-11-15)
+
+##### 1. Remove `5. Alamat` & Renumber Fields (`1`–`10`)
+1. **Remove `5. Alamat` Across Siasatan UI & Print**:
+   - Remove the `5. Alamat` field, state (`alamat`), `isDirty` tracking, and `resetFields()` entry from `SiasatanForm.jsx` and `Kemaskini Rekod Siasatan` (`SiasatanTable.jsx`).
+   - Remove the `5. Alamat` row from `buildSiasatanPrintModel` (`src/utils/siasatan.js` / `SiasatanPrintSheet.jsx`).
+   - **Legacy Firestore Data (Confirmed)**: On new `siasatan` inserts and updates, omit `alamat`. Existing `alamat` values stored on legacy Firestore documents (and `src/data/seedSiasatan.js`) remain **untouched** in Firestore (do **not** run `deleteField()` on `alamat`) while hidden/ignored across UI and Print.
+2. **Sequential Field Renumbering (`1`–`10`)**:
+   Update field labels across `SiasatanForm.jsx`, `SiasatanTable.jsx` (`Kemaskini Rekod Siasatan`), `SiasatanPrintSheet.jsx` (`buildSiasatanPrintModel`), and `role_matrix.md`:
+   1. **No. Saman**
+   2. **Kategori Saman**
+   3. **No. Report**
+   4. **Kenderaan & Pemandu / Pejalan Kaki Terlibat**
+   5. **Lokasi Hotspot / Jalan** *(was 6)* — select populated from `activeLocations` + `<option value="__LAIN_LAIN__">Lain-lain</option>` + `+ Tambah Lokasi` modal button in `SiasatanForm.jsx`, paired with **`Nama Jalan`** and **`Jenis Jalan`** immediately below.
+   6. **Tarikh Kemalangan** *(was 7)*
+   7. **Waktu Kejadian (HH:MM)** *(was 8)*
+   8. **Kesalahan (Punca Kemalangan)** *(was 9)*
+   9. **Melibatkan Binatang** *(was 10, + conditional `Jenis Binatang`)*
+   10. **Jenis Kemalangan** *(was 11, + conditional `Bilangan Kematian (Nyawa)`)*
+
+##### 2. Custom `"Lain-lain"` Option for `5. Lokasi Hotspot / Jalan` (`SiasatanForm.jsx`, `SiasatanTable.jsx`, `src/utils/locations.js`)
+1. **Dropdown & Sentinel Reuse**:
+   - Reuse `CUSTOM_LOCATION_ID` (`"__LAIN_LAIN__"`) from `src/utils/locations.js` and append `<option value="__LAIN_LAIN__">Lain-lain</option>` as the final option in `5. Lokasi Hotspot / Jalan` (`SiasatanForm.jsx` and `SiasatanTable.jsx` Edit Modal).
+   - Default selection remains `activeLocations[0]?.id || CUSTOM_LOCATION_ID`.
+   - Retain the **`+ Tambah Lokasi`** button next to `5. Lokasi Hotspot / Jalan` in `SiasatanForm.jsx` so authorized officers (`Siasatan` / `Admin`) can still register genuine recurring hotspots into `locations` when appropriate.
+2. **No Write to `locations` Master Collection**:
+   - Selecting `"Lain-lain"` (`__LAIN_LAIN__`) means the accident occurred at a generic/rare non-master location and **must NOT** create or mutate any document in Firestore `locations`.
+3. **Conditional `Nama Jalan` & `Jenis Jalan` Behavior**:
+   - **When a master location is selected (`locationId !== "__LAIN_LAIN__"`)**:
+     - `Nama Jalan` and `Jenis Jalan` remain uneditable (`readOnly`, `bg-[#0d192e] text-[var(--color-text-secondary)] cursor-not-allowed`, badge `Auto (Tidak boleh diubah)`), auto-populated from `selectedLocation.route` and `selectedLocation.road_type`.
+   - **When `"Lain-lain"` (`"__LAIN_LAIN__"`) is selected (Confirmed UX)**:
+     - Do **not** add a separate `Lokasi Lain-lain (Nyatakan)` text field or optional `Penanda KM / Mercu Tanda` field; instead, persist `location_name` directly from the enabled **`Nama Jalan`** input to avoid duplicate data entry.
+     - **`Nama Jalan`** becomes an enabled, **required** text input (`bg-[var(--color-nav-bg)] border-[var(--color-border-light)] text-[var(--color-text-primary)]`, auto-uppercased on save, label hint `Input Manual`), populating both `nama_jalan` and `location_name`.
+     - **`Jenis Jalan`** becomes an enabled, **required** `<select>` dropdown starting unselected (`""` -> `"-- Pilih Jenis Jalan --"`, **Confirmed**) with the 4 canonical values matching `LokasiForm.jsx` (`Persekutuan`, `Negeri`, `Lebuh Raya`, `Lain-lain`), populating `tempat_kemalangan`.
+     - *(Critical Data Integrity Reason)*: `Jenis Jalan` **must** use the canonical `<select>` choices rather than free text because `9 Elemen Data Kemalangan` Element `4. Jenis jalan` queries exact values (`"Lebuh Raya"`, `"Persekutuan"`, `"Negeri"`, `"Lain-lain"`) via `tempat_kemalangan`.
+
+##### 3. Persistence Schema, Table, Edit Modal, Print & Cross-Collection Dependencies
+1. **Firestore Schema & `useSiasatan.js` (`normalizeSiasatan`, `addSiasatan`, `updateSiasatan`)**:
+   - Add/persist on `siasatan/{siasatanId}`:
+     - `is_custom_location: boolean` (`Boolean(raw.is_custom_location || raw.location_id === CUSTOM_LOCATION_ID)`)
+     - `nama_jalan: string` (uppercased custom road name when `is_custom_location === true`; `""` when linked to a master location so master `route` edits remain live via `locations`)
+     - `location_id: string` (`"__LAIN_LAIN__"` when custom; `locations/{id}` when master)
+     - `location_name: string` (same uppercased custom `Nama Jalan` when custom; `selectedLoc.name` when master)
+     - `tempat_kemalangan: string` (selected canonical `Jenis Jalan` when custom; `selectedLoc.road_type` when master)
+2. **`Senarai Rekod Siasatan` (`SiasatanTable.jsx`)**:
+   - **Table Badge**: In `Lokasi Hotspot` column, whenever `r.is_custom_location` is `true`, render `r.location_name || "-"` alongside a `Lain-lain` pill badge (`bg-slate-500/15 text-[var(--color-text-secondary)] border border-[var(--color-border-light)] rounded-full px-1.5 py-0.5 text-[10px] font-semibold`) matching `PenguatkuasaanTable.jsx`.
+   - **Edit Modal (`Kemaskini Rekod Siasatan`)**:
+     - Exclude `CUSTOM_LOCATION_ID` from `modalLocationMissingFromActive` so `"Lain-lain"` records never show `"__LAIN_LAIN__ (Tidak Aktif)"`.
+     - Unlock `Nama Jalan` and `Jenis Jalan` whenever `formState.location_id === CUSTOM_LOCATION_ID`, pre-filling `nama_jalan` (falling back to `location_name` if needed) and `tempat_kemalangan` when opening a custom record.
+     - Clear custom inputs cleanly if switched from `"Lain-lain"` to a master location, and reset `Nama Jalan`/`Jenis Jalan` to empty/unselected when switched from a master location to `"Lain-lain"`.
+3. **Single-Record PDF Print (`SiasatanPrintSheet.jsx` & `buildSiasatanPrintModel` in `src/utils/siasatan.js`)**:
+   - Render numbered fields `1`–`10` (without `Alamat`).
+   - For `is_custom_location === true` (where `selectedLocation` is `null`), populate `Nama Jalan` from `record.nama_jalan || record.location_name || "-"`, `Jenis Jalan` from `record.tempat_kemalangan || "-"`, and `5. Lokasi Hotspot / Jalan` simply as **`"Lain-lain"`** (**Confirmed** — avoids printing the custom road name twice in consecutive rows).
+4. **Navigation Safety (`useUnsavedChanges.js`)**:
+   - Track `locationId === CUSTOM_LOCATION_ID`, `customNamaJalan`, and `customJenisJalan` in `SiasatanForm.jsx` `isDirty` + `resetFields()` and `SiasatanTable.jsx` Edit Modal `snapshot`, while removing `alamat`.
+5. **Cross-Collection & Dashboard Behavior (Same Rules as Penguatkuasaan `"Lain-lain"`)**:
+   - **Dashboard Global Totals & Charts (`App.jsx`, `Layout.jsx`)**: `"Lain-lain"` `siasatan` records **ARE included** in top KPI cards (`Jumlah Kemalangan`, `Kemalangan Maut`, `Jumlah Kematian`, `Jumlah Saman`), `TrendBarChart`, and Dashboard CSV export.
+   - **Dashboard Hotspot / Blackspot Analytics (`App.jsx`, `HotspotList.jsx`, `LocationRisk.jsx`, `GoogleHotspotMap.jsx`, `SchematicMap.jsx`)**: Because `"__LAIN_LAIN__"` is not in `locations`, `"Lain-lain"` `siasatan` records **ARE excluded** from `Hotspot Keutamaan`, `Risiko Lokasi Pilihan`, Map markers/InfoWindows, and `Skor Risiko` calculations.
+   - **Siasatan Analytics (`SiasatanAggregation.jsx`, `FactorBars.jsx`)**: `"Lain-lain"` `siasatan` records **ARE included** across all 9 Elements (including Element `4. Jenis jalan`) and `Faktor Penyumbang Direkodkan`.
+
+##### 4. Verification Checklist (for Implementing Agent — Phase 1)
+- Confirm `npm run lint` (ESLint zero errors/warnings) and `npm run build` succeed.
+- Verify `Borang Input Data Siasatan`, `Kemaskini Rekod Siasatan`, and `SiasatanPrintSheet` follow exact numbering `1`–`10` with `Alamat` removed (`role_matrix.md` updated to `1`–`10`).
+- Verify `5. Lokasi Hotspot / Jalan` renders active master locations plus `"Lain-lain"`, and `+ Tambah Lokasi` continues registering new master locations cleanly.
+- Verify selecting `"Lain-lain"` unlocks `Nama Jalan` (required text, auto-uppercased) and `Jenis Jalan` (required canonical `<select>`), persists `is_custom_location: true` without adding any document to `locations` (verified via Firestore count), displays the `Lain-lain` badge in `SiasatanTable.jsx`, reopens cleanly in Edit Modal without `(Tidak Aktif)`, prints accurate `Nama Jalan` & `Jenis Jalan` in `SiasatanPrintSheet`, and tallies into `9 Elemen` Element `4. Jenis jalan` and Dashboard global KPIs while excluded from `Hotspot Keutamaan` / `Risiko Lokasi Pilihan`.
+- Verify `UnsavedChangesModal` detects unsaved `"Lain-lain"` inputs and clears after submit or `Kosongkan Borang`.
+
+---
+
+#### UAT 4 · Phase 2 — Time Window Filters (`Tiada` Default) & Print Reports (`9 Elemen Data Kemalangan` & `Senarai Rekod Penguatkuasaan`) ✅ COMPLETED (2026-11-15)
+
+##### 1. Shared Time Window Helpers (`src/hooks/usePeriodData.js`)
+- Update `"all"` label formatting in `src/hooks/usePeriodData.js`:
+  - `getPeriodLabelBM("all")` returns `"Tiada"` (replacing `"Semua Rekod"` so it never duplicates `"Semua Rekod (Semua Rekod)"`).
+  - `formatPeriodDateRangeBM("all")` returns `"Semua Rekod"`.
+  - Helper / indicator display renders **`📅 Tempoh Data: Tiada (Semua Rekod)`** when `"all"` is active, and **`📅 Tempoh Data: <Tempoh> (<Tarikh Mula> – <Tarikh Akhir>)`** for `weekly`, `monthly`, and `quarterly` (matching `Layout.jsx` Dashboard indicator and strict system-clock date logic).
+- `Dashboard Utama` (`PeriodContext` in `src/period-context.jsx`) remains unchanged (`weekly` | `monthly` [default] | `quarterly`). The new filters in `9 Elemen Data Kemalangan` and `Senarai Rekod Penguatkuasaan` maintain **local state** defaulting to `"all"` (`Tiada`).
+
+##### 2. `9 Elemen Data Kemalangan` — Time Window Filter (`tarikh_kemalangan`) & Print (`SiasatanAggregation.jsx`, `useSiasatan.js`)
+1. **Time Window Selector & Window Indicator**:
+   - Render a **`<select>` dropdown** (Confirmed — options: `<option value="all">Tiada</option>` [default], `Mingguan`, `Bulanan`, `Suku Tahun`) + `📅 Tempoh Data: ...` badge + `🖨️ Cetak PDF` button inside the `9 Elemen Data Kemalangan` card header (`SiasatanAggregation.jsx`), styled consistently with the existing dark command-dashboard tokens (`--color-nav-bg`, `--color-border-light`, `--color-chip-bg`, `--color-accent`).
+   - *(Note on Field Number Shift)*: Uses `tarikh_kemalangan` (field `6. Tarikh Kemalangan` after Phase 1, previously field `7`).
+   - Changing the active time window re-fetches `loadSummaryMetrics(activePeriod)` and resets `expandedMap` (`{}`) and `subItemsMap` (`{}`) so lazy Firestore sub-element reads stay fresh and quota-conscious.
+   - `Senarai Rekod Siasatan` (`SiasatanTable.jsx`) and `Faktor Penyumbang Direkodkan` (`FactorBars.jsx`) remain **all-time and independent** of `9 Elemen Data Kemalangan`'s time window filter (Confirmed).
+2. **Quota-Conscious Print Data Loader (`useSiasatan.js`)**:
+   - Add `loadAllNineElements(period = "all")` in `src/hooks/useSiasatan.js` that executes **at most 1** `loadByQuery(getPeriodQueryConstraints("tarikh_kemalangan", period))` call and computes summary metrics + all child breakdowns for Elements 4–9 in memory using the exact same bucketing helpers (`countVehicleCategoriesFromRecords`, `countUniqueAgeBracketsFromRecords`, etc.) so clicking `🖨️ Cetak PDF` never fires 6–15 separate Firestore queries and never alters the UI's collapse state.
+3. **Print Sheet Layout (`SiasatanAggPrintSheet.jsx`)**:
+   - Available to all roles authorized to view `/siasatan` (`Siasatan`, `Admin`, and view-only `Penguatkuasaan` — Confirmed). Remains **enabled** even when `totalCases === 0` so officers can print a zeroed `0 kes` / `0 nyawa` / `0 kenderaan` report (**Confirmed**).
+   - Renders via React Portal into `#siasatan-agg-print-root` (or shared print portal architecture in `src/index.css`) as a white-paper A4 Portrait HTML table (`@page { size: A4 portrait; margin: 12mm; }`).
+   - Header: `PDRM · BSPT · INOVASI IPD`, `SMART TRAFFIC AI — LAPORAN 9 ELEMEN DATA KEMALANGAN`, active `Tempoh Data` label + range, and `Tarikh / Masa Cetakan` + `● DATA SIMULASI — BUKAN IPRS SEBENAR` banner + footer.
+   - **Expanded Full-Breakdown Print (Confirmed)**: Render Elements 1–3 (compact 3-column top summary row) AND **expand/show all child breakdown rows** for Elements 4–9 split evenly into two side-by-side HTML tables (`4`–`7` left, `8`–`9` right) with right-sized value columns so the entire 9-Element report fits cleanly onto a single A4 Portrait page (showing every category/bucket row including `0 kes` / `0 kenderaan` counts), regardless of the UI's collapse state.
+
+##### 3. `Senarai Rekod Penguatkuasaan` — Time Window Filter (`1. Tarikh`) & Multi-Page A4 Print (`PenguatkuasaanTable.jsx`, `usePenguatkuasaan.js`)
+1. **Time Window Selector & Window Indicator**:
+   - Render a **`<select>` dropdown** (Confirmed — options: `<option value="all">Tiada</option>` [default], `Mingguan`, `Bulanan`, `Suku Tahun`) + `📅 Tempoh Data: ...` badge + `🖨️ Cetak PDF` button inside the `Senarai Rekod Penguatkuasaan` card header (`PenguatkuasaanTable.jsx`), filtering records strictly by `1. Tarikh` (`tarikh`).
+   - Preserves existing pagination (`PENGUATKUASAAN_PAGE_SIZE = 5` in UI), `Tarikh ↓/↑` sort toggle, `Saman` category breakdown, `Lain-lain` badge, and row-click `Kemaskini Rekod Penguatkuasaan` modal.
+2. **Quota-Preserving Filtered Firestore Pagination (`usePenguatkuasaan.js`)**:
+   - Update `usePenguatkuasaan` to store/accept the active `periodFilter` (`"all" | "weekly" | "monthly" | "quarterly"`):
+     - Apply `getPeriodQueryConstraints("tarikh", activePeriod)` to both `getCountFromServer(query(coll, ...dateConstraints))` (updating `{totalCount} operasi` Chip, `totalPages`, and footer counts) and `orderBy("tarikh", effectiveOrder)` + `startAfter(cursor)` + `limit(5)`.
+     - **Zero Composite Index Needed**: Both `where("tarikh", ...)` range constraints and `orderBy("tarikh", ...)` operate on the single field `tarikh`.
+     - Changing `periodFilter` resets `pageEndCursorsRef.current = {}` and loads Page `1` while retaining `sortOrder`.
+     - `addPenguatkuasaan` and `updatePenguatkuasaan` preserve the active `periodFilter` when refreshing (`loadPage`), clamping `currentPage` safely if an edit moves a record out of the filtered window and reduces `totalPages`.
+3. **Multi-Page Print Feature (`PenguatkuasaanPrintSheet.jsx`)**:
+   - Available to all roles authorized to view `/penguatkuasaan` (`Penguatkuasaan`, `Admin`, and view-only `Siasatan` — Confirmed).
+   - **`🖨️ Cetak PDF` is disabled** when the filtered `totalCount === 0` (Confirmed).
+   - Clicking **`🖨️ Cetak PDF`** fetches **all** operations matching the active `periodFilter` and current `sortOrder` (`loadByQuery([...getPeriodQueryConstraints("tarikh", activePeriod), orderBy("tarikh", sortOrder)])` in 1 query) — **never** limited to the 5 UI-paginated rows.
+   - **Multi-Page A4 Layout**:
+     - **A4 Landscape (Confirmed)** (`size: A4 landscape; margin: 12mm;`) so all 9 columns (`Bil.`, `Tarikh`, `Lokasi`, `Jenis Operasi`, `Kat. Kemalangan`, `Tangkapan`, `Sita`, `Saman`, `Masa`) fit comfortably without cramped wrapping.
+     - **Natural CSS Flow Multi-Page Pagination (Confirmed)**: Continuous HTML `<table>` with `thead { display: table-header-group; }` (repeating table column headers on Page 2, Page 3, ...) and `tr { break-inside: avoid; page-break-inside: avoid; }` so rows pack densely onto A4 pages (~12–20+ rows per page depending on saman list length, vs 5 in UI) and automatically continue cleanly across Page 2, 3, ... without splitting any row mid-page or creating half-empty orphan pages.
+     - Displays full, **non-truncated** saman lists (`no_saman` + `POL 170 A` / `POL 257` counts, or `0`), `[Lain-lain]` indicator for custom locations, plus a bottom summary row (`Jumlah Operasi`, `Jumlah Tangkapan`, `Jumlah Sita`, `Jumlah Saman` — displaying both raw listed notices and deduplicated unique saman count, e.g. `12 saman (10 unik)`, **Confirmed**).
+     - Includes `PDRM · BSPT · INOVASI IPD` header, `SMART TRAFFIC AI — SENARAI REKOD PENGUATKUASAAN`, active `Tempoh Data` & `Susunan Tarikh`, print timestamp, `● DATA SIMULASI — BUKAN IPRS SEBENAR` banner, and footer.
+   - Refactor shared print CSS/portal rules in `src/index.css` so single-record Siasatan, `9 Elemen Data Kemalangan`, and `Senarai Rekod Penguatkuasaan` share consistent white-paper print styling without breaking orientation per report.
+
+##### 4. Verification Checklist (for Implementing Agent — Phase 2)
+- Confirm zero new packages in `package.json`, and confirm `npm run lint` and `npm run build` succeed with zero errors/warnings.
+- Verify `9 Elemen Data Kemalangan`: defaults to `Tiada` (all-time) via `<select>` (`<option value="all">Tiada</option>`) with `📅 Tempoh Data: Tiada (Semua Rekod)`, filters Elements 1–9 accurately by `tarikh_kemalangan` across `Mingguan`/`Bulanan`/`Suku Tahun` while `SiasatanTable` & `FactorBars` remain all-time, collapses/resets expanded elements on period change, allows `Siasatan`, `Admin`, and view-only `Penguatkuasaan` to click `🖨️ Cetak PDF` (remaining enabled even when `totalCases === 0`), and prints a clean white-paper A4 Portrait PDF with all Elements 4–9 children expanded (including `0 kes`/`0 kenderaan` rows) in ≤1 Firestore query on click.
+- Verify `Senarai Rekod Penguatkuasaan`: defaults to `Tiada` (all-time) via `<select>` (`<option value="all">Tiada</option>`), filters `totalCount` + 5-per-page Firestore cursor pagination + `Tarikh ↓/↑` sort cleanly by `tarikh` across `Mingguan`/`Bulanan`/`Suku Tahun` with zero Firestore index errors, retains active filter after add/edit, disables `🖨️ Cetak PDF` when filtered `totalCount === 0`, allows `Penguatkuasaan`, `Admin`, and view-only `Siasatan` to print **all** matching records in A4 Landscape across Page 1, 2, 3, ... with repeating headers, non-truncated saman lists, both raw & unique `Jumlah Saman`, and clean natural pagination.
+- Verify RBAC & `role_matrix.md` updates reflect the new time window filters and print capabilities across `Siasatan`, `Penguatkuasaan`, and `Admin` (while `Guest` remains restricted to Dashboard Utama).
+
+##### 5. All Owner Clarifications Resolved
+All Phase 1 and Phase 2 design, schema, UX, and print layout decisions above were reviewed and confirmed by the project owner prior to implementation:
+1. No duplicate `Lokasi Lain-lain (Nyatakan)` / `Penanda KM` field in `Borang Input Data Siasatan` (`Nama Jalan` sets both `nama_jalan` & `location_name`; `Jenis Jalan` uses canonical `<select>` starting unselected `""`; `SiasatanPrintSheet` row `5` prints `"Lain-lain"`; legacy `alamat` left untouched in Firestore).
+2. `<select>` time window controls (`<option value="all">Tiada</option>`) on `9 Elemen Data Kemalangan` and `Senarai Rekod Penguatkuasaan`; `SiasatanTable` & `FactorBars` stay all-time.
+3. `9 Elemen` printout expands all child categories (including `0`) and `🖨️ Cetak PDF` stays enabled at `0` cases; `Senarai Rekod Penguatkuasaan` printout uses A4 Landscape natural flow, disables `🖨️ Cetak PDF` when filtered `totalCount === 0`, and prints both raw & unique `Jumlah Saman`.
+4. View-only roles (`Penguatkuasaan` on `9 Elemen`, `Siasatan` on `Senarai Rekod Penguatkuasaan`) can print PDFs.
+
+##### 6. Deferred Maintenance — Pre-Existing Repo-Wide ESLint Cleanup ✅ COMPLETED (2026-11-15)
+- **Resolved all 24 pre-existing problems (23 errors, 1 warning)** across the remaining 14 files outside UAT Round 4, bringing full-repo `eslint .` to **0 errors, 0 warnings** (`vite build`: `146 modules transformed`, exit code `0`):
+  - **Category A (Legacy `samalahkita` Hooks — preserved per §9 Note)**: Cleaned unused imports/state/catch bindings and unsafe `return` inside `finally` (`useDetectScroll.js`, `useMediaService.js`, `useSituationService.js`, `useStoryService.js`, `useTheme.jsx`) without deleting any reference hook.
+  - **Category B (Firebase Init)**: Replaced `catch (_)` with optional catch binding `catch {` for emulator HMR safety in `src/fb_cloud_firestore.js`.
+  - **Category C (Vite React Fast Refresh Splits)**: Extracted `AuthContext`/`useAuth` to `src/hooks/useAuth.js`, `PeriodContext`/`usePeriod` to `src/hooks/usePeriod.js`, `getPinColor` to `src/utils/locations.js`, and `synthesizeFromRecords` to `src/utils/locationInsight.js`, updating all component/view callers.
+  - **Category D (Effect Sync & Hook Deps)**: Replaced synchronous `useEffect` state sync with derived render state / microtask scheduling / `totalCountRef` stability in `HotspotList.jsx`, `useSelectedLocation.js`, `LocationRisk.jsx`, `GoogleHotspotMap.jsx`, and `useLocations.js`.
+- **Regression Test Plan**: Automated checks (`TC-LINT-01`–`TC-LINT-03`) verified; manual browser/emulator smoke test cases (`TC-LINT-04`–`TC-LINT-15`) are tracked in [`spec/lint-test-cases.md`](file:///c:/Users/basyir/smarttraffic/spec/lint-test-cases.md).
+
+---
+
 ## 10. Key Constraints
 
 - **Simulation data only** — all numbers are fake; the banner "DATA SIMULASI — BUKAN IPRS SEBENAR" must always be visible

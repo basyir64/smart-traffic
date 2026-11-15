@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { collection, getDocs, query, addDoc, doc, getCountFromServer, writeBatch, serverTimestamp } from "firebase/firestore";
 import { db } from "../fb_cloud_firestore";
 
@@ -43,16 +42,13 @@ export function useSituationService() {
   };
 
   async function save(situation) {
-    let ref;
     try {
       // console.log(JSON.stringify(situation, null, 2))
-      ref = await addDoc(collection(db, "situations"), situation);
+      const ref = await addDoc(collection(db, "situations"), situation);
+      return ref?.id || false;
     } catch (error) {
       console.error("Error saving situation: " + error);
       return false;
-    } finally {
-      if (ref?.id) return ref.id;
-      else return false
     }
   }
 

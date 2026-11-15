@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 
 export function useDetectScroll() {
   const [isAtEnd, setIsAtEnd] = useState(false);
-  const [isAtDivEnd, setIsAtDivEnd] = useState(false);
+  const [isAtDivEnd] = useState(false);
   const [isScrollingUp, setIsScrollingUp] = useState(true);
   const [lastY, setLastY] = useState(0);
   const divRef = useRef(null);

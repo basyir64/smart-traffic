@@ -1,118 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { getPeriodLabelBM } from "../../hooks/usePeriodData";
 import { isHotspotLocation } from "../../utils/locations";
+import { synthesizeFromRecords } from "../../utils/locationInsight";
 import { normalizePihakTerlibatList } from "../../utils/siasatan";
 import Chip from "../shared/Chip";
 
 // In-memory cache keyed by `${locationId}:${period}:${recordsSignature}` to preserve Gemini quota
 const insightCache = new Map();
-
-function countTopKey(items, getKey) {
-  const counts = {};
-  items.forEach((item) => {
-    const k = getKey(item);
-    if (k) counts[k] = (counts[k] || 0) + 1;
-  });
-  return Object.entries(counts).sort((a, b) => b[1] - a[1]);
-}
-
-/**
- * Data-driven synthesis of Faktor & Cadangan strictly from the location's
- * live Siasatan + Penguatkuasaan records (used while Gemini loads or as fallback).
- */
-export function synthesizeFromRecords(location, locRecords = [], locOps = []) {
-  const accOps = locOps.filter(
-    (o) => o.kategori_kemalangan && o.kategori_kemalangan !== "Bukan kemalangan"
-  );
-  const totalCases = locRecords.length + accOps.length;
-
-  if (totalCases === 0 && locOps.length === 0) {
-    return {
-      faktor:
-        "Tiada rekod siasatan atau operasi penguatkuasaan direkodkan di lokasi ini bagi tempoh semasa.",
-      cadangan:
-        "Teruskan rondaan pemantauan berkala mengikut jadual BSPT; tiada intervensi khusus diperlukan buat masa ini.",
-      source: "empty",
-    };
-  }
-
-  const topViolations = countTopKey(locRecords, (r) => r.kesalahan);
-  const allParties = locRecords.flatMap((r) => normalizePihakTerlibatList(r));
-  const topVehicles = countTopKey(allParties, (p) => p.kategori_kenderaan);
-  const topOpsTypes = countTopKey(locOps, (o) => o.jenis_operasi);
-  const animalRecs = locRecords.filter((r) => r.melibatkan_binatang);
-  const fatalSiasatan = locRecords.filter((r) => r.maut).length;
-  const fatalOps = accOps.filter((o) => o.kategori_kemalangan === "Maut").length;
-  const totalFatal = fatalSiasatan + fatalOps;
-  const totalTangkapan = locOps.reduce((s, o) => s + (o.tangkapan || 0), 0);
-  const totalSita = locOps.reduce((s, o) => s + (o.sita || 0), 0);
-
-  const partsFaktor = [];
-  if (topViolations.length > 0) {
-    const vText = topViolations
-      .slice(0, 2)
-      .map(([k, c]) => `${k} (${c} kes)`)
-      .join(" & ");
-    partsFaktor.push(`Punca utama siasatan: ${vText}`);
-  }
-  if (topVehicles.length > 0) {
-    const vehText = topVehicles
-      .slice(0, 2)
-      .map(([k, c]) => `${k} (${c})`)
-      .join(", ");
-    partsFaktor.push(`melibatkan ${vehText}`);
-  }
-  if (animalRecs.length > 0) {
-    const animals = [
-      ...new Set(animalRecs.map((r) => r.jenis_binatang).filter(Boolean)),
-    ].join("/");
-    partsFaktor.push(`isu lintasan binatang (${animals})`);
-  }
-  if (accOps.length > 0) {
-    const opCats = countTopKey(accOps, (o) => o.kategori_kemalangan)
-      .map(([k, c]) => `${k} (${c})`)
-      .join(", ");
-    partsFaktor.push(`rekod penguatkuasaan kategori kemalangan: ${opCats}`);
-  }
-
-  const faktor =
-    partsFaktor.length > 0
-      ? `${partsFaktor.join("; ")}${
-          totalFatal > 0 ? ` — termasuk ${totalFatal} kes maut.` : "."
-        }`
-      : `Terdapat ${locOps.length} operasi pencegahan direkodkan tanpa insiden kemalangan.`;
-
-  const landmarkRef = location.landmark || location.route || location.name;
-  const peakRef =
-    location.peak_time && location.peak_time !== "Tiada rekod tempoh ini"
-      ? ` pada waktu puncak ${location.peak_time}`
-      : "";
-
-  const topVName = topViolations[0]?.[0] || "";
-  let actionFocus = "rondaan omnipresence dan kawalan lalu lintas bersasar";
-  if (topVName === "Gagal patuh isyarat") {
-    actionFocus =
-      "Op Pematuhan Lampu Isyarat serta semakan masa kitaran lampu isyarat bersama JKR";
-  } else if (topVName === "Kelajuan") {
-    actionFocus =
-      "Op Had Laju (Speed Trap) dan pemasangan jalur bergetar melintang (rumble strips)";
-  } else if (topVName === "Langgar binatang" || animalRecs.length > 0) {
-    actionFocus =
-      "pemasangan papan tanda amaran lintasan ternakan & audit pencahayaan jalan waktu malam";
-  } else if (topVName === "Keadaan jalan") {
-    actionFocus =
-      "audit permukaan jalan dan garisan pantul cahaya bersama JKR / PBT";
-  }
-
-  const opsNote =
-    locOps.length > 0
-      ? ` (${locOps.length} Op ${topOpsTypes[0]?.[0] || ""} telah dilaksanakan: ${totalTangkapan} tangkapan, ${totalSita} sita)`
-      : "";
-
-  const cadangan = `Perketatkan ${actionFocus} di sekitar ${landmarkRef}${peakRef}${opsNote}.`;
-
-  return { faktor, cadangan, source: "data" };
-}
 
 async function fetchGeminiLocationInsight({
   apiKey,
@@ -165,23 +59,33 @@ ${opsDigest}
 
 Pulangkan JSON sahaja dengan kunci "faktor" dan "cadangan".`;
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(
-      apiKey
-    )}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 300,
-          responseMimeType: "application/json",
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  let response;
+  try {
+    response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
         },
-      }),
-    }
-  );
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 1024,
+            responseMimeType: "application/json",
+          },
+        }),
+        signal: controller.signal,
+      }
+    );
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     throw new Error(`Gemini HTTP ${response.status}`);
@@ -190,11 +94,16 @@ Pulangkan JSON sahaja dengan kunci "faktor" dan "cadangan".`;
   const data = await response.json();
   const rawText =
     data?.candidates?.[0]?.content?.parts
-      ?.map((p) => p.text || "")
+      ?.filter((p) => !p.thought)
+      .map((p) => p.text || "")
       .join("")
       .trim() || "";
+  const cleanJson = rawText
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
 
-  const parsed = JSON.parse(rawText);
+  const parsed = JSON.parse(cleanJson);
   if (!parsed.faktor || !parsed.cadangan) {
     throw new Error("Format JSON Gemini tidak lengkap");
   }
@@ -255,51 +164,51 @@ export default function LocationRisk({
     [location, period, recordsSignature]
   );
 
-  const [insight, setInsight] = useState(null);
-  const [loadingGemini, setLoadingGemini] = useState(false);
+  const [insightState, setInsightState] = useState({
+    cacheKey: "",
+    data: null,
+  });
+  const [loadingCacheKey, setLoadingCacheKey] = useState("");
 
-  // Sync from cache when switching locations/periods, without firing any API call automatically
-  useEffect(() => {
-    if (!location) {
-      setInsight(null);
-      setLoadingGemini(false);
-      return;
-    }
-    if (insightCache.has(cacheKey)) {
-      setInsight(insightCache.get(cacheKey));
-    } else {
-      setInsight(null);
-    }
-    setLoadingGemini(false);
-  }, [location, cacheKey]);
+  const insight = !location
+    ? null
+    : insightState.cacheKey === cacheKey
+      ? insightState.data
+      : cacheKey && insightCache.has(cacheKey)
+        ? insightCache.get(cacheKey)
+        : null;
+  const loadingGemini =
+    Boolean(location && cacheKey) && loadingCacheKey === cacheKey;
 
   const handleGenerateInsight = async () => {
-    if (!location || loadingGemini) return;
+    const targetCacheKey = cacheKey;
+    if (!location || !targetCacheKey || loadingGemini) return;
 
     // Short-circuit when 0 records in this period to preserve Gemini quota
     if (locRecords.length === 0 && locOps.length === 0) {
-      insightCache.set(cacheKey, fallbackInsight);
-      setInsight(fallbackInsight);
+      insightCache.set(targetCacheKey, fallbackInsight);
+      setInsightState({ cacheKey: targetCacheKey, data: fallbackInsight });
       return;
     }
 
-    const apiKey =
+    const apiKey = String(
       (typeof import.meta !== "undefined" &&
         import.meta.env?.VITE_GEMINI_API_KEY) ||
-      "";
+        ""
+    ).trim();
 
     if (
       !apiKey ||
-      !apiKey.startsWith("AIza") ||
+      (!apiKey.startsWith("AIza") && !apiKey.startsWith("AQ.")) ||
       typeof navigator === "undefined" ||
       !navigator.onLine
     ) {
-      insightCache.set(cacheKey, fallbackInsight);
-      setInsight(fallbackInsight);
+      insightCache.set(targetCacheKey, fallbackInsight);
+      setInsightState({ cacheKey: targetCacheKey, data: fallbackInsight });
       return;
     }
 
-    setLoadingGemini(true);
+    setLoadingCacheKey(targetCacheKey);
     try {
       const geminiRes = await fetchGeminiLocationInsight({
         apiKey,
@@ -308,13 +217,16 @@ export default function LocationRisk({
         locRecords,
         locOps,
       });
-      insightCache.set(cacheKey, geminiRes);
-      setInsight(geminiRes);
-    } catch {
-      insightCache.set(cacheKey, fallbackInsight);
-      setInsight(fallbackInsight);
+      insightCache.set(targetCacheKey, geminiRes);
+      setInsightState({ cacheKey: targetCacheKey, data: geminiRes });
+    } catch (err) {
+      console.warn(
+        "[LocationRisk] Gemini unavailable, using live data synthesis:",
+        err?.message || err
+      );
+      setInsightState({ cacheKey: targetCacheKey, data: fallbackInsight });
     } finally {
-      setLoadingGemini(false);
+      setLoadingCacheKey((curr) => (curr === targetCacheKey ? "" : curr));
     }
   };
 
@@ -487,7 +399,7 @@ export default function LocationRisk({
                 </div>
                 <div>
                   2. <b>Sintesis AI:</b> Dihantar atas permintaan (on-demand) ke{" "}
-                  <b>Gemini 2.5 Flash</b> (JSON mode) untuk merumuskan{" "}
+                  <b>Gemini 3.5 Flash-Lite</b> (JSON mode) untuk merumuskan{" "}
                   <b>Faktor</b> punca kemalangan & <b>Cadangan</b> taktikal
                   BSPT/JKR.
                 </div>

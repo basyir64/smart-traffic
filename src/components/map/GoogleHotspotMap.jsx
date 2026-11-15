@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import SchematicMap from "./SchematicMap";
-import { getPinColor } from "./LocationPin";
+import { getPinColor } from "../../utils/locations";
 import Chip from "../shared/Chip";
 
 const DARK_MAP_STYLES = [
@@ -173,11 +173,7 @@ export default function GoogleHotspotMap({
   // Load Google Maps script when in 'google' mode and API key is present
   useEffect(() => {
     if (mapMode !== "google") return;
-    if (!apiKey || googleMapsAuthFailed) {
-      setMapsError(true);
-      setMapMode("schematic");
-      return;
-    }
+    if (!apiKey || googleMapsAuthFailed) return;
 
     let cancelled = false;
     loadGoogleMapsScript(apiKey)
@@ -297,7 +293,8 @@ export default function GoogleHotspotMap({
     onSelectLocation,
   ]);
 
-  const showSchematic = mapMode === "schematic" || mapsError || !apiKey;
+  const showSchematic =
+    mapMode === "schematic" || mapsError || !apiKey || googleMapsAuthFailed;
 
   return (
     <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl p-5 max-[550px]:p-3.5 shadow-[0_7px_25px_#040a1630]">
@@ -306,14 +303,19 @@ export default function GoogleHotspotMap({
           Peta Skematik & Interaktif Hotspot
         </h2>
         <div className="flex items-center gap-2">
-          {apiKey && !mapsError && (
+          {apiKey && !mapsError && !googleMapsAuthFailed && (
             <button
               type="button"
-              onClick={() =>
+              onClick={() => {
+                if (googleMapsAuthFailed) {
+                  setMapsError(true);
+                  setMapMode("schematic");
+                  return;
+                }
                 setMapMode((prev) =>
                   prev === "google" ? "schematic" : "google"
-                )
-              }
+                );
+              }}
               className="cursor-pointer border border-[var(--color-border-light)] bg-[var(--color-nav-bg)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors"
             >
               {showSchematic

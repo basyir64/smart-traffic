@@ -9,8 +9,8 @@ import {
   useBeforeUnload,
 } from "react-router";
 import { useTranslation } from "react-i18next";
-import { usePeriod } from "../period-context";
-import { useAuth } from "../auth-context";
+import { usePeriod } from "../hooks/usePeriod";
+import { useAuth } from "../hooks/useAuth";
 import { useUnsavedChanges } from "../hooks/useUnsavedChanges";
 import UnsavedChangesModal from "../components/shared/UnsavedChangesModal";
 import { dataSourceInfo } from "../fb_cloud_firestore";

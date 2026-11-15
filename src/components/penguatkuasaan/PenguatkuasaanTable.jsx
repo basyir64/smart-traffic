@@ -1,6 +1,9 @@
 import { useState, useMemo } from "react";
 import { PENGUATKUASAAN_PAGE_SIZE } from "../../hooks/usePenguatkuasaan";
+import { usePrintSheet } from "../../hooks/usePrintSheet";
 import Chip from "../shared/Chip";
+import PeriodPrintToolbar from "../shared/PeriodPrintToolbar";
+import PenguatkuasaanPrintSheet from "./PenguatkuasaanPrintSheet";
 import SamanBatchInput from "./SamanBatchInput";
 import {
   useRegisterUnsavedForm,
@@ -10,6 +13,7 @@ import {
   UNSET_SAMAN_CATEGORY,
   normalizeSamanList,
   summarizeSamanCategories,
+  formatSamanCategoryBreakdown,
   validateSamanRows,
 } from "../../utils/saman";
 import {
@@ -22,14 +26,23 @@ export default function PenguatkuasaanTable({
   totalCount = 0,
   currentPage = 1,
   sortOrder = "desc",
+  periodFilter = "all",
   loading = false,
   canEdit = false,
   activeLocations = [],
   allLocations = [],
   onPageChange,
   onToggleSort,
+  onPeriodChange,
+  onLoadAllForPrint,
   onUpdateOperation,
 }) {
+  const [printing, setPrinting] = useState(false);
+  const { printJob, startPrint } = usePrintSheet({
+    portalId: "penguatkuasaan-print-root",
+    bodyClass: "printing-penguatkuasaan-list",
+    orientation: "landscape",
+  });
   const [editingOp, setEditingOp] = useState(null);
   const [formState, setFormState] = useState(null);
   const [initialFormState, setInitialFormState] = useState(null);
@@ -192,13 +205,47 @@ export default function PenguatkuasaanTable({
     }
   };
 
+  const handlePrintList = async () => {
+    if (printing || loading || totalCount === 0 || !onLoadAllForPrint) return;
+    setPrinting(true);
+    try {
+      const allOps = await onLoadAllForPrint(periodFilter, sortOrder);
+      if (!allOps || allOps.length === 0) return;
+      startPrint({
+        operations: allOps,
+        period: periodFilter,
+        sortOrder,
+        documentTitle: `Senarai_Penguatkuasaan_${
+          periodFilter === "all" ? "Tiada" : periodFilter
+        }`,
+      });
+    } finally {
+      setPrinting(false);
+    }
+  };
+
   return (
     <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl p-5 max-[550px]:p-3.5 shadow-[0_7px_25px_#040a1630]">
-      <div className="flex items-center justify-between gap-2.5 mb-4">
-        <h2 className="text-[17px] font-bold m-0">
-          Senarai Rekod Penguatkuasaan
-        </h2>
-        <Chip>{totalCount} operasi</Chip>
+      <div className="flex items-center justify-between gap-2.5 mb-4 flex-wrap">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <h2 className="text-[17px] font-bold m-0">
+            Senarai Rekod Penguatkuasaan
+          </h2>
+          <Chip>{totalCount} operasi</Chip>
+        </div>
+        <PeriodPrintToolbar
+          period={periodFilter}
+          onPeriodChange={onPeriodChange}
+          onPrint={handlePrintList}
+          printDisabled={loading || totalCount === 0}
+          printing={printing}
+          selectAriaLabel="Penapis Tempoh Data Senarai Rekod Penguatkuasaan"
+          printTitle={
+            totalCount === 0
+              ? "Tiada rekod untuk dicetak"
+              : "Cetak Senarai Rekod Penguatkuasaan sebagai PDF"
+          }
+        />
       </div>
 
       <div className="overflow-x-auto">
@@ -248,7 +295,9 @@ export default function PenguatkuasaanTable({
                   colSpan={8}
                   className="py-3 px-2 text-[var(--color-text-secondary)]"
                 >
-                  Tiada rekod operasi penguatkuasaan direkodkan.
+                  {periodFilter !== "all"
+                    ? "Tiada rekod operasi penguatkuasaan bagi tempoh ini."
+                    : "Tiada rekod operasi penguatkuasaan direkodkan."}
                 </td>
               </tr>
             ) : (
@@ -256,18 +305,7 @@ export default function PenguatkuasaanTable({
                 const samanList = normalizeSamanList(op.saman_list);
                 const samanSummary = summarizeSamanCategories(samanList);
                 const samanCount = samanSummary.total;
-                const breakdown = [];
-                if (samanSummary.pol170a > 0) {
-                  breakdown.push(`POL 170 A (${samanSummary.pol170a})`);
-                }
-                if (samanSummary.pol257 > 0) {
-                  breakdown.push(`POL 257 (${samanSummary.pol257})`);
-                }
-                if (samanSummary.unset > 0) {
-                  breakdown.push(
-                    `${UNSET_SAMAN_CATEGORY} (${samanSummary.unset})`
-                  );
-                }
+                const breakdown = formatSamanCategoryBreakdown(samanSummary);
                 const samanTooltip = samanList
                   .map((s) => `${s.no_saman} (${s.kategori_saman})`)
                   .join(", ");
@@ -656,6 +694,8 @@ export default function PenguatkuasaanTable({
           </div>
         </div>
       )}
+
+      <PenguatkuasaanPrintSheet report={printJob} />
     </div>
   );
 }

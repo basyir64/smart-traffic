@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 
 /**
  * Manages the currently selected hotspot location on Dashboard Utama.
@@ -14,16 +14,6 @@ export function useSelectedLocation(locations = []) {
     () => activeLocations[0]?.id || "km31-jalan-ipoh-lumut"
   );
 
-  useEffect(() => {
-    if (!activeLocations.length) return;
-    const existsAndActive = activeLocations.some(
-      (l) => l.id === selectedLocationId
-    );
-    if (!existsAndActive) {
-      setSelectedLocationId(activeLocations[0].id);
-    }
-  }, [activeLocations, selectedLocationId]);
-
   const selectedLocation = useMemo(() => {
     return (
       activeLocations.find((l) => l.id === selectedLocationId) ||
@@ -34,7 +24,7 @@ export function useSelectedLocation(locations = []) {
   }, [activeLocations, locations, selectedLocationId]);
 
   return {
-    selectedLocationId,
+    selectedLocationId: selectedLocation?.id || selectedLocationId,
     setSelectedLocationId,
     selectedLocation,
   };

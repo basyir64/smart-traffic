@@ -3,6 +3,7 @@ import { SIASATAN_PAGE_SIZE } from "../../hooks/useSiasatan";
 import Chip from "../shared/Chip";
 import PihakTerlibatBatchInput from "./PihakTerlibatBatchInput";
 import SiasatanPrintSheet from "./SiasatanPrintSheet";
+import SiasatanRoadFields from "./SiasatanRoadFields";
 import {
   useRegisterUnsavedForm,
   isFormStateDirty,
@@ -13,6 +14,11 @@ import {
   coerceStoredSamanCategory,
   normalizeSamanCategory,
 } from "../../utils/saman";
+import {
+  CUSTOM_LOCATION_ID,
+  ROAD_TYPES,
+  resolveSiasatanLocation,
+} from "../../utils/locations";
 import {
   createEmptyPihakTerlibatRow,
   normalizePihakTerlibatList,
@@ -75,14 +81,26 @@ export default function SiasatanTable({
   );
 
   const selectedModalLocation = useMemo(() => {
-    if (!formState?.location_id) return null;
+    if (!formState?.location_id || formState.location_id === CUSTOM_LOCATION_ID) {
+      return null;
+    }
     return locationPool.find((l) => l.id === formState.location_id) || null;
   }, [locationPool, formState]);
 
+  const isModalCustomLocation =
+    formState?.location_id === CUSTOM_LOCATION_ID;
+
   const printLocation = useMemo(() => {
-    const locId = printJob?.record?.location_id;
-    if (!locId) return null;
-    return locationPool.find((l) => l.id === locId) || null;
+    const rec = printJob?.record;
+    if (
+      !rec ||
+      rec.is_custom_location ||
+      rec.location_id === CUSTOM_LOCATION_ID ||
+      !rec.location_id
+    ) {
+      return null;
+    }
+    return locationPool.find((l) => l.id === rec.location_id) || null;
   }, [locationPool, printJob]);
 
   useEffect(() => {
@@ -132,7 +150,12 @@ export default function SiasatanTable({
   };
 
   const modalLocationMissingFromActive = useMemo(() => {
-    if (!formState?.location_id) return false;
+    if (
+      !formState?.location_id ||
+      formState.location_id === CUSTOM_LOCATION_ID
+    ) {
+      return false;
+    }
     return !activeLocations.some((l) => l.id === formState.location_id);
   }, [activeLocations, formState]);
 
@@ -162,15 +185,32 @@ export default function SiasatanTable({
     const baseParties = normalizedParties.length
       ? normalizedParties
       : [createEmptyPihakTerlibatRow()];
+    const isCustom = Boolean(
+      rec.is_custom_location || rec.location_id === CUSTOM_LOCATION_ID
+    );
+    const initialLocationId = isCustom
+      ? CUSTOM_LOCATION_ID
+      : rec.location_id || activeLocations[0]?.id || CUSTOM_LOCATION_ID;
+    const matchedMaster = isCustom
+      ? null
+      : locationPool.find((l) => l.id === initialLocationId) || null;
+
     const snapshot = {
       no_saman: rec.no_saman || "",
       kategori_saman: coerceStoredSamanCategory(rec.kategori_saman),
       no_report: rec.no_report || "",
       pihak_terlibat: baseParties.map((p) => ({ ...p })),
-      alamat: rec.alamat || "",
-      tempat_kemalangan: rec.tempat_kemalangan || "Persekutuan",
-      location_id: rec.location_id || activeLocations[0]?.id || "",
-      location_name: rec.location_name || activeLocations[0]?.name || "",
+      is_custom_location: isCustom,
+      nama_jalan: isCustom ? rec.nama_jalan || rec.location_name || "" : "",
+      tempat_kemalangan: isCustom
+        ? ROAD_TYPES.includes(rec.tempat_kemalangan)
+          ? rec.tempat_kemalangan
+          : ""
+        : rec.tempat_kemalangan || matchedMaster?.road_type || "Persekutuan",
+      location_id: initialLocationId,
+      location_name: isCustom
+        ? rec.location_name || rec.nama_jalan || ""
+        : rec.location_name || matchedMaster?.name || "",
       tarikh_kemalangan: rec.tarikh_kemalangan || "",
       waktu_kejadian: rec.waktu_kejadian || "",
       kesalahan: rec.kesalahan || "Kelajuan",
@@ -196,12 +236,27 @@ export default function SiasatanTable({
   };
 
   const handleModalLocationChange = (newLocId) => {
+    if (newLocId === CUSTOM_LOCATION_ID) {
+      setFormState((prev) => ({
+        ...prev,
+        is_custom_location: true,
+        location_id: CUSTOM_LOCATION_ID,
+        location_name: "",
+        nama_jalan: "",
+        tempat_kemalangan: "",
+      }));
+      return;
+    }
+
     const matched = locationPool.find((l) => l.id === newLocId);
     setFormState((prev) => ({
       ...prev,
+      is_custom_location: false,
       location_id: newLocId,
       location_name: matched?.name || prev.location_name,
-      tempat_kemalangan: matched?.road_type || prev.tempat_kemalangan,
+      nama_jalan: "",
+      tempat_kemalangan:
+        matched?.road_type || prev.tempat_kemalangan || "Persekutuan",
     }));
   };
 
@@ -255,13 +310,23 @@ export default function SiasatanTable({
       return;
     }
 
+    const locResolution = resolveSiasatanLocation(
+      formState.location_id,
+      formState.nama_jalan,
+      formState.tempat_kemalangan,
+      locationPool,
+      formState.location_name,
+      formState.tempat_kemalangan
+    );
+    if (!locResolution.valid) {
+      setModalError(locResolution.error);
+      return;
+    }
+
     setSaving(true);
     setModalError("");
     setModalPihakErrors({});
     try {
-      const selectedLoc = locationPool.find(
-        (l) => l.id === formState.location_id
-      );
       const isMaut = formState.jenis_kemalangan === "Maut";
 
       await onUpdateRecord(editingRecord.id, {
@@ -269,13 +334,11 @@ export default function SiasatanTable({
         kategori_saman: normalizedKategori || UNSET_SAMAN_CATEGORY,
         no_report: savedReport,
         pihak_terlibat: partyCheck.cleanList,
-        alamat: (formState.alamat || "").trim(),
-        tempat_kemalangan:
-          selectedLoc?.road_type ||
-          formState.tempat_kemalangan ||
-          "Persekutuan",
-        location_id: selectedLoc?.id || formState.location_id,
-        location_name: selectedLoc?.name || formState.location_name,
+        is_custom_location: locResolution.is_custom_location,
+        nama_jalan: locResolution.nama_jalan,
+        tempat_kemalangan: locResolution.tempat_kemalangan,
+        location_id: locResolution.location_id,
+        location_name: locResolution.location_name,
         tarikh_kemalangan: formState.tarikh_kemalangan,
         waktu_kejadian: formState.waktu_kejadian,
         kesalahan: formState.kesalahan,
@@ -418,7 +481,16 @@ export default function SiasatanTable({
                         </span>
                       )}
                     </td>
-                    <td className="py-3 px-2">{r.location_name}</td>
+                    <td className="py-3 px-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span>{r.location_name || "-"}</span>
+                        {r.is_custom_location && (
+                          <span className="inline-block bg-slate-500/15 text-[var(--color-text-secondary)] border border-[var(--color-border-light)] rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
+                            Lain-lain
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="py-3 px-2">{r.tempat_kemalangan}</td>
                     <td className="py-3 px-2">
                       {r.tarikh_kemalangan} {r.waktu_kejadian}
@@ -649,26 +721,10 @@ export default function SiasatanTable({
                 inputPaddingClass="py-2"
               />
 
-              {/* 5. Alamat */}
+              {/* 5. Lokasi Hotspot / Jalan */}
               <div className="col-span-full flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  5. Alamat
-                </label>
-                <input
-                  type="text"
-                  value={formState.alamat}
-                  onChange={(e) =>
-                    setFormState((p) => ({ ...p, alamat: e.target.value }))
-                  }
-                  required
-                  className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
-                />
-              </div>
-
-              {/* 6. Lokasi Hotspot / Jalan */}
-              <div className="col-span-full flex flex-col gap-1.5">
-                <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  6. Lokasi Hotspot / Jalan
+                  5. Lokasi Hotspot / Jalan
                 </label>
                 <select
                   value={formState.location_id}
@@ -687,52 +743,40 @@ export default function SiasatanTable({
                       {loc.is_blackspot ? " ⚫" : ""}
                     </option>
                   ))}
+                  <option value={CUSTOM_LOCATION_ID}>Lain-lain</option>
                 </select>
               </div>
 
-              {/* Auto-populated read-only location details */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-[var(--color-text-label)] font-semibold flex items-center justify-between gap-2">
-                  <span>Nama Jalan</span>
-                  <span className="text-[10px] font-normal text-[var(--color-text-secondary)]">
-                    Auto (Tidak boleh diubah)
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  readOnly
-                  aria-readonly="true"
-                  value={selectedModalLocation?.route || ""}
-                  placeholder="-"
-                  className="w-full border border-[var(--color-border)] text-[var(--color-text-secondary)] bg-[#0d192e] px-3 py-2 rounded-[9px] text-[13px] cursor-not-allowed focus:outline-none"
-                />
-              </div>
+              {/* Conditional Nama Jalan & Jenis Jalan (read-only master or manual Lain-lain) */}
+              <SiasatanRoadFields
+                idPrefix="editSiasatan"
+                isCustom={isModalCustomLocation}
+                namaJalan={
+                  isModalCustomLocation
+                    ? formState.nama_jalan || ""
+                    : selectedModalLocation?.route || ""
+                }
+                jenisJalan={
+                  isModalCustomLocation
+                    ? formState.tempat_kemalangan || ""
+                    : selectedModalLocation?.road_type ||
+                      formState.tempat_kemalangan ||
+                      ""
+                }
+                onNamaJalanChange={(val) =>
+                  setFormState((p) => ({ ...p, nama_jalan: val }))
+                }
+                onJenisJalanChange={(val) =>
+                  setFormState((p) => ({ ...p, tempat_kemalangan: val }))
+                }
+                disabled={saving}
+                inputPaddingClass="py-2"
+              />
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-[var(--color-text-label)] font-semibold flex items-center justify-between gap-2">
-                  <span>Jenis Jalan</span>
-                  <span className="text-[10px] font-normal text-[var(--color-text-secondary)]">
-                    Auto (Tidak boleh diubah)
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  readOnly
-                  aria-readonly="true"
-                  value={
-                    selectedModalLocation?.road_type ||
-                    formState.tempat_kemalangan ||
-                    ""
-                  }
-                  placeholder="-"
-                  className="w-full border border-[var(--color-border)] text-[var(--color-text-secondary)] bg-[#0d192e] px-3 py-2 rounded-[9px] text-[13px] cursor-not-allowed focus:outline-none"
-                />
-              </div>
-
-              {/* 7. Tarikh Kemalangan */}
+              {/* 6. Tarikh Kemalangan */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  7. Tarikh Kemalangan
+                  6. Tarikh Kemalangan
                 </label>
                 <input
                   type="date"
@@ -748,10 +792,10 @@ export default function SiasatanTable({
                 />
               </div>
 
-              {/* 8. Waktu Kejadian */}
+              {/* 7. Waktu Kejadian */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  8. Waktu Kejadian (HH:MM)
+                  7. Waktu Kejadian (HH:MM)
                 </label>
                 <input
                   type="time"
@@ -767,10 +811,10 @@ export default function SiasatanTable({
                 />
               </div>
 
-              {/* 9. Kesalahan */}
+              {/* 8. Kesalahan */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  9. Kesalahan (Punca Kemalangan)
+                  8. Kesalahan (Punca Kemalangan)
                 </label>
                 <select
                   value={formState.kesalahan}
@@ -791,10 +835,10 @@ export default function SiasatanTable({
                 </select>
               </div>
 
-              {/* 10. Melibatkan Binatang */}
+              {/* 9. Melibatkan Binatang */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  10. Melibatkan Binatang
+                  9. Melibatkan Binatang
                 </label>
                 <div className="flex gap-4 items-center py-1.5 text-[13px]">
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -854,10 +898,10 @@ export default function SiasatanTable({
                 </div>
               )}
 
-              {/* 11. Jenis Kemalangan */}
+              {/* 10. Jenis Kemalangan */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  11. Jenis Kemalangan
+                  10. Jenis Kemalangan
                 </label>
                 <select
                   value={formState.jenis_kemalangan}

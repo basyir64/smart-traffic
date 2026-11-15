@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { isHotspotLocation } from "../../utils/locations";
 import Chip from "../shared/Chip";
 
@@ -17,14 +17,9 @@ export default function HotspotList({
 
   const totalCount = sortedActive.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / HOTSPOT_PAGE_SIZE));
+  const effectivePage = Math.min(currentPage, totalPages);
 
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
-
-  const startIndex = (currentPage - 1) * HOTSPOT_PAGE_SIZE;
+  const startIndex = (effectivePage - 1) * HOTSPOT_PAGE_SIZE;
   const pageLocations = sortedActive.slice(
     startIndex,
     startIndex + HOTSPOT_PAGE_SIZE
@@ -95,8 +90,8 @@ export default function HotspotList({
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={effectivePage === 1}
+              onClick={() => setCurrentPage(Math.max(1, effectivePage - 1))}
               className="cursor-pointer border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] hover:border-[var(--color-accent)] px-2.5 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               ← Sebelumnya
@@ -109,7 +104,7 @@ export default function HotspotList({
                   type="button"
                   onClick={() => setCurrentPage(pageNum)}
                   className={`cursor-pointer border px-2.5 py-1.5 rounded-lg font-semibold transition-colors ${
-                    currentPage === pageNum
+                    effectivePage === pageNum
                       ? "bg-[var(--color-accent)] text-[#0b1629] border-[var(--color-accent)]"
                       : "border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] hover:border-[var(--color-accent)]"
                   }`}
@@ -121,9 +116,9 @@ export default function HotspotList({
 
             <button
               type="button"
-              disabled={currentPage === totalPages}
+              disabled={effectivePage === totalPages}
               onClick={() =>
-                setCurrentPage((p) => Math.min(totalPages, p + 1))
+                setCurrentPage(Math.min(totalPages, effectivePage + 1))
               }
               className="cursor-pointer border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] hover:border-[var(--color-accent)] px-2.5 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >

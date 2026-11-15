@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "../auth-context";
+import { useAuth } from "../hooks/useAuth";
 import { useLocations } from "../hooks/useLocations";
 import { useSiasatan } from "../hooks/useSiasatan";
 import SiasatanForm from "../components/siasatan/SiasatanForm";
@@ -21,6 +21,7 @@ export default function Siasatan() {
     countAllSiasatan,
     loadSummaryMetrics,
     loadElementSubItems,
+    loadAllNineElements,
     addSiasatan,
     updateSiasatan,
   } = useSiasatan();
@@ -69,6 +70,7 @@ export default function Siasatan() {
       <SiasatanAggregation
         loadSummaryMetrics={loadSummaryMetrics}
         loadElementSubItems={loadElementSubItems}
+        loadAllNineElements={loadAllNineElements}
         refreshKey={refreshKey}
       />
 

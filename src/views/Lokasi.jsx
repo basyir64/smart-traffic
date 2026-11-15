@@ -1,5 +1,5 @@
 import { useLocations } from "../hooks/useLocations";
-import { useAuth } from "../auth-context";
+import { useAuth } from "../hooks/useAuth";
 import LokasiForm from "../components/locations/LokasiForm";
 import LokasiTable from "../components/locations/LokasiTable";
 

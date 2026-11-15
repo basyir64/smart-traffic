@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useAuth } from "../auth-context";
+import { useAuth } from "../hooks/useAuth";
 import { useLocations } from "../hooks/useLocations";
 import { usePenguatkuasaan } from "../hooks/usePenguatkuasaan";
 import PenguatkuasaanForm from "../components/penguatkuasaan/PenguatkuasaanForm";
@@ -13,9 +13,12 @@ export default function Penguatkuasaan() {
     totalCount,
     currentPage,
     sortOrder,
+    periodFilter,
     loadingPage,
     loadPage,
     toggleSortOrder,
+    changePeriodFilter,
+    loadAllForPrint,
     addPenguatkuasaan,
     updatePenguatkuasaan,
   } = usePenguatkuasaan();
@@ -45,12 +48,15 @@ export default function Penguatkuasaan() {
         totalCount={totalCount}
         currentPage={currentPage}
         sortOrder={sortOrder}
+        periodFilter={periodFilter}
         loading={loadingPage}
         canEdit={canModifyPenguatkuasaan}
         activeLocations={activeLocations}
         allLocations={locations}
         onPageChange={(nextPage) => loadPage(nextPage)}
         onToggleSort={toggleSortOrder}
+        onPeriodChange={changePeriodFilter}
+        onLoadAllForPrint={loadAllForPrint}
         onUpdateOperation={updatePenguatkuasaan}
       />
     </div>

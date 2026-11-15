@@ -55,6 +55,7 @@ export function useLocations({ paginated = false } = {}) {
 
   // Store the last DocumentSnapshot of each visited page: { [pageNumber]: QueryDocumentSnapshot }
   const pageEndCursorsRef = useRef({});
+  const totalCountRef = useRef(0);
 
   const loadPage = useCallback(
     async (targetPage = 1, forceReset = false, customOrder = null) => {
@@ -72,9 +73,11 @@ export function useLocations({ paginated = false } = {}) {
           pageEndCursorsRef.current = {};
         }
 
-        if (targetPage === 1 || forceReset || totalCount === 0) {
+        if (targetPage === 1 || forceReset || totalCountRef.current === 0) {
           const countSnap = await getCountFromServer(coll);
-          setTotalCount(countSnap.data().count);
+          const nextTotal = countSnap.data().count;
+          totalCountRef.current = nextTotal;
+          setTotalCount(nextTotal);
         }
 
         if (targetPage === 1) {
@@ -152,7 +155,7 @@ export function useLocations({ paginated = false } = {}) {
         setLoadingPage(false);
       }
     },
-    [totalCount]
+    []
   );
 
   const toggleSortOrder = useCallback(() => {
@@ -162,8 +165,14 @@ export function useLocations({ paginated = false } = {}) {
 
   useEffect(() => {
     if (paginated) {
-      loadPage(1, true);
-      return;
+      let isMounted = true;
+      Promise.resolve().then(() => {
+        if (isMounted) return loadPage(1, true);
+        return null;
+      });
+      return () => {
+        isMounted = false;
+      };
     }
 
     let unsubscribe = null;
@@ -193,7 +202,7 @@ export function useLocations({ paginated = false } = {}) {
       isMounted = false;
       if (unsubscribe) unsubscribe();
     };
-  }, [paginated]);
+  }, [paginated, loadPage]);
 
   const activeLocations = useMemo(
     () => locations.filter((l) => l.active),

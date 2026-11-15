@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from "react-router";
-import { useAuth } from "../../auth-context";
+import { useAuth } from "../../hooks/useAuth";
 
 /**
  * Guards routes based on authentication and role permissions.

@@ -1,8 +1,8 @@
 // src/hooks/useTheme.ts
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export function useTheme() {
-  
+  const [isDark] = useState(true);
 
   return { isDark };
 }

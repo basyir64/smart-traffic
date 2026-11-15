@@ -59,12 +59,12 @@ export const auth = getAuth(app);
 if (isEmulator) {
   try {
     connectFirestoreEmulator(db, firestoreHost, firestorePort);
-  } catch (_) {
+  } catch {
     // Already connected during HMR
   }
   try {
     connectAuthEmulator(auth, authEmulatorUrl, { disableWarnings: true });
-  } catch (_) {
+  } catch {
     // Already connected during HMR
   }
 }

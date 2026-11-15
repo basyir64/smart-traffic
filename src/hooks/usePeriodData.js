@@ -37,7 +37,7 @@ export function getPeriodLabelBM(period) {
   if (period === "weekly") return "Mingguan";
   if (period === "monthly") return "Bulanan";
   if (period === "quarterly") return "Suku Tahun";
-  if (period === "all") return "Semua Rekod";
+  if (period === "all") return "Tiada";
   return period || "Bulanan";
 }
 
@@ -100,6 +100,13 @@ export function formatPeriodDateRangeBM(period) {
   }
 
   return `${startFormatted} – ${endFormatted}`;
+}
+
+/**
+ * Formats the combined period badge value (`Tiada (Semua Rekod)` or `<Tempoh> (<Tarikh>)`).
+ */
+export function formatPeriodIndicatorBM(period) {
+  return `${getPeriodLabelBM(period)} (${formatPeriodDateRangeBM(period)})`;
 }
 
 /**

@@ -1,19 +1,16 @@
 import { useState, useEffect, useCallback, Fragment } from "react";
-
-const COLLAPSIBLE_ELEMENTS = [
-  { number: 4, title: "4. Jenis jalan" },
-  { number: 5, title: "5. Waktu kejadian" },
-  { number: 6, title: "6. Kemalangan melibatkan binatang" },
-  { number: 7, title: "7. Kategori kenderaan" },
-  { number: 8, title: "8. Kategori umur" },
-  { number: 9, title: "9. Punca kemalangan (Kesalahan)" },
-];
+import { COLLAPSIBLE_NINE_ELEMENTS } from "../../utils/siasatan";
+import { usePrintSheet } from "../../hooks/usePrintSheet";
+import PeriodPrintToolbar from "../shared/PeriodPrintToolbar";
+import SiasatanAggPrintSheet from "./SiasatanAggPrintSheet";
 
 export default function SiasatanAggregation({
   loadSummaryMetrics,
   loadElementSubItems,
+  loadAllNineElements,
   refreshKey = 0,
 }) {
+  const [period, setPeriod] = useState("all");
   const [summary, setSummary] = useState({
     totalCases: 0,
     fatalCases: 0,
@@ -22,6 +19,7 @@ export default function SiasatanAggregation({
     totalVehicles: 0,
   });
   const [loadingSummary, setLoadingSummary] = useState(true);
+  const [printing, setPrinting] = useState(false);
 
   // Track which parent elements (4..9) are expanded (all collapsed by default)
   const [expandedMap, setExpandedMap] = useState({});
@@ -30,32 +28,49 @@ export default function SiasatanAggregation({
   // Track per-element loading state: { [elementNumber]: boolean }
   const [loadingElementsMap, setLoadingElementsMap] = useState({});
 
-  // Load all-time top-level summary metrics (Elements 1, 2, 3) when refreshKey changes
+  const { printJob, startPrint } = usePrintSheet({
+    portalId: "siasatan-agg-print-root",
+    bodyClass: "printing-siasatan-agg",
+    orientation: "portrait",
+  });
+
+  // Load summary metrics for the active time window (`period`) or when `refreshKey` changes
   useEffect(() => {
     let isMounted = true;
-    setLoadingSummary(true);
-    // Reset cached sub-items when data changes; collapse elements so Firestore is only read when expanded
-    setSubItemsMap({});
-    setExpandedMap({});
 
-    if (loadSummaryMetrics) {
-      loadSummaryMetrics("all")
-        .then((res) => {
-          if (isMounted && res) {
-            setSummary(res);
-          }
-        })
-        .finally(() => {
-          if (isMounted) setLoadingSummary(false);
-        });
-    } else {
-      setLoadingSummary(false);
-    }
+    Promise.resolve()
+      .then(() => {
+        if (!loadSummaryMetrics) return null;
+        if (isMounted) setLoadingSummary(true);
+        return loadSummaryMetrics(period);
+      })
+      .then((res) => {
+        if (!isMounted) return;
+        if (res) {
+          setSummary(res);
+        }
+        // Reset cached sub-items when data/period reloads so Firestore reads happen only when expanded
+        setSubItemsMap({});
+        setExpandedMap({});
+      })
+      .catch((err) => {
+        console.error("[SiasatanAggregation] Error loading summary:", err);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingSummary(false);
+      });
 
     return () => {
       isMounted = false;
     };
-  }, [refreshKey, loadSummaryMetrics]);
+  }, [period, refreshKey, loadSummaryMetrics]);
+
+  const handlePeriodChange = useCallback((nextPeriod) => {
+    setPeriod(nextPeriod);
+    setLoadingSummary(true);
+    setExpandedMap({});
+    setSubItemsMap({});
+  }, []);
 
   // Toggle expand/collapse for Elements 4..9; fire Firestore read ONLY when expanded
   const handleToggleElement = useCallback(
@@ -66,11 +81,11 @@ export default function SiasatanAggregation({
         [elementNumber]: nextExpanded,
       }));
 
-      // Only query Firestore when expanding and not already cached
+      // Only query Firestore when expanding and not already cached for the active period
       if (nextExpanded && !subItemsMap[elementNumber] && loadElementSubItems) {
         setLoadingElementsMap((prev) => ({ ...prev, [elementNumber]: true }));
         try {
-          const items = await loadElementSubItems(elementNumber, "all");
+          const items = await loadElementSubItems(elementNumber, period);
           setSubItemsMap((prev) => ({
             ...prev,
             [elementNumber]: items,
@@ -83,8 +98,33 @@ export default function SiasatanAggregation({
         }
       }
     },
-    [expandedMap, subItemsMap, loadElementSubItems]
+    [expandedMap, subItemsMap, loadElementSubItems, period]
   );
+
+  const handlePrintReport = useCallback(async () => {
+    if (printing) return;
+    setPrinting(true);
+    try {
+      const data = loadAllNineElements
+        ? await loadAllNineElements(period)
+        : { summary, subItemsByElement: subItemsMap };
+      startPrint({
+        summary: data.summary,
+        subItemsByElement: data.subItemsByElement,
+        period,
+        documentTitle: `Laporan_9_Elemen_${period === "all" ? "Tiada" : period}`,
+      });
+    } finally {
+      setPrinting(false);
+    }
+  }, [
+    printing,
+    loadAllNineElements,
+    period,
+    summary,
+    subItemsMap,
+    startPrint,
+  ]);
 
   const getParentValue = (elementNumber) => {
     if (elementNumber === 6) {
@@ -100,6 +140,15 @@ export default function SiasatanAggregation({
     <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl p-5 max-[550px]:p-3.5 shadow-[0_7px_25px_#040a1630]">
       <div className="flex items-center justify-between gap-2.5 mb-4 flex-wrap">
         <h2 className="text-[17px] font-bold m-0">9 Elemen Data Kemalangan</h2>
+        <PeriodPrintToolbar
+          period={period}
+          onPeriodChange={handlePeriodChange}
+          onPrint={handlePrintReport}
+          printDisabled={loadingSummary}
+          printing={printing}
+          selectAriaLabel="Penapis Tempoh Data 9 Elemen Data Kemalangan"
+          printTitle="Cetak Laporan 9 Elemen Data Kemalangan sebagai PDF"
+        />
       </div>
 
       <table id="siasatanAggTable" className="w-full border-collapse">
@@ -131,7 +180,7 @@ export default function SiasatanAggregation({
           </tr>
 
           {/* Elements 4..9 (collapsible parent rows — fire Firestore read only when expanded) */}
-          {COLLAPSIBLE_ELEMENTS.map(({ number, title }) => {
+          {COLLAPSIBLE_NINE_ELEMENTS.map(({ number, title }) => {
             const isExpanded = Boolean(expandedMap[number]);
             const isLoading = Boolean(loadingElementsMap[number]);
             const children = subItemsMap[number] || [];
@@ -194,6 +243,8 @@ export default function SiasatanAggregation({
           })}
         </tbody>
       </table>
+
+      <SiasatanAggPrintSheet report={printJob} />
     </div>
   );
 }

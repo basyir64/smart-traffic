@@ -57,11 +57,14 @@ export function usePenguatkuasaan() {
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortOrder, setSortOrder] = useState("desc");
+  const [periodFilter, setPeriodFilter] = useState("all");
   const [loadingPage, setLoadingPage] = useState(false);
 
   // Cache the last doc snapshot of each page: pageEndCursorsRef.current[1] = lastDocOfPage1
   const pageEndCursorsRef = useRef({});
   const sortOrderRef = useRef("desc");
+  const periodFilterRef = useRef("all");
+  const totalCountRef = useRef(0);
 
   const loadByQuery = useCallback(async (constraints = []) => {
     try {
@@ -85,32 +88,66 @@ export function usePenguatkuasaan() {
     [loadByQuery]
   );
 
-  // Native Firestore cursor-paginated loader (fires ONLY when page or sort order changes)
+  // Native Firestore cursor-paginated loader (fires ONLY when page, sort order, or period changes)
   const loadPage = useCallback(
-    async (targetPage = 1, forceReset = false, customOrder = null) => {
+    async (
+      targetPage = 1,
+      forceReset = false,
+      customOrder = null,
+      customPeriod = null
+    ) => {
       setLoadingPage(true);
       try {
         await bootstrapFirestoreData();
         const coll = collection(db, "penguatkuasaan");
         const effectiveOrder = customOrder || sortOrderRef.current;
+        const effectivePeriod = customPeriod ?? periodFilterRef.current;
 
         if (customOrder && customOrder !== sortOrderRef.current) {
           sortOrderRef.current = customOrder;
           setSortOrder(customOrder);
           pageEndCursorsRef.current = {};
-        } else if (forceReset) {
+        }
+        if (customPeriod !== null && customPeriod !== periodFilterRef.current) {
+          periodFilterRef.current = customPeriod;
+          setPeriodFilter(customPeriod);
+          pageEndCursorsRef.current = {};
+        }
+        if (forceReset) {
           pageEndCursorsRef.current = {};
         }
 
-        // Refresh total count on page 1 or reset
-        if (targetPage === 1 || forceReset || totalCount === 0) {
-          const countSnap = await getCountFromServer(coll);
-          setTotalCount(countSnap.data().count);
+        const dateConstraints = getPeriodQueryConstraints(
+          "tarikh",
+          effectivePeriod
+        );
+
+        // Refresh total count on page 1, filter change, reset, or before first count
+        if (
+          targetPage === 1 ||
+          forceReset ||
+          customPeriod !== null ||
+          totalCountRef.current === 0
+        ) {
+          const countQuery = dateConstraints.length
+            ? query(coll, ...dateConstraints)
+            : coll;
+          const countSnap = await getCountFromServer(countQuery);
+          const freshCount = countSnap.data().count;
+          totalCountRef.current = freshCount;
+          setTotalCount(freshCount);
         }
 
-        if (targetPage === 1) {
+        const maxPages = Math.max(
+          1,
+          Math.ceil(totalCountRef.current / PENGUATKUASAAN_PAGE_SIZE)
+        );
+        const safeTargetPage = Math.min(Math.max(1, targetPage), maxPages);
+
+        if (safeTargetPage === 1) {
           const firstQuery = query(
             coll,
+            ...dateConstraints,
             orderBy("tarikh", effectiveOrder),
             limit(PENGUATKUASAAN_PAGE_SIZE)
           );
@@ -127,19 +164,21 @@ export function usePenguatkuasaan() {
           return docs;
         }
 
-        // Ensure we have the cursor for (targetPage - 1); if user jumped ahead, walk cursors sequentially
-        for (let p = 1; p < targetPage; p++) {
+        // Ensure we have the cursor for (safeTargetPage - 1); if user jumped ahead, walk cursors sequentially
+        for (let p = 1; p < safeTargetPage; p++) {
           if (!pageEndCursorsRef.current[p]) {
             const prevCursor = p === 1 ? null : pageEndCursorsRef.current[p - 1];
             const stepQuery = prevCursor
               ? query(
                   coll,
+                  ...dateConstraints,
                   orderBy("tarikh", effectiveOrder),
                   startAfter(prevCursor),
                   limit(PENGUATKUASAAN_PAGE_SIZE)
                 )
               : query(
                   coll,
+                  ...dateConstraints,
                   orderBy("tarikh", effectiveOrder),
                   limit(PENGUATKUASAAN_PAGE_SIZE)
                 );
@@ -151,16 +190,18 @@ export function usePenguatkuasaan() {
           }
         }
 
-        const cursorAfter = pageEndCursorsRef.current[targetPage - 1];
+        const cursorAfter = pageEndCursorsRef.current[safeTargetPage - 1];
         const nextQuery = cursorAfter
           ? query(
               coll,
+              ...dateConstraints,
               orderBy("tarikh", effectiveOrder),
               startAfter(cursorAfter),
               limit(PENGUATKUASAAN_PAGE_SIZE)
             )
           : query(
               coll,
+              ...dateConstraints,
               orderBy("tarikh", effectiveOrder),
               limit(PENGUATKUASAAN_PAGE_SIZE)
             );
@@ -170,11 +211,11 @@ export function usePenguatkuasaan() {
           normalizeOperation({ id: d.id, ...d.data() })
         );
         if (snapshot.docs.length > 0) {
-          pageEndCursorsRef.current[targetPage] =
+          pageEndCursorsRef.current[safeTargetPage] =
             snapshot.docs[snapshot.docs.length - 1];
         }
         setPageOperations(docs);
-        setCurrentPage(targetPage);
+        setCurrentPage(safeTargetPage);
         return docs;
       } catch (err) {
         console.error("[usePenguatkuasaan] Error loading page:", err.message);
@@ -183,13 +224,28 @@ export function usePenguatkuasaan() {
         setLoadingPage(false);
       }
     },
-    [totalCount]
+    []
   );
 
   const toggleSortOrder = useCallback(() => {
     const nextOrder = sortOrderRef.current === "desc" ? "asc" : "desc";
     return loadPage(1, true, nextOrder);
   }, [loadPage]);
+
+  const changePeriodFilter = useCallback(
+    (nextPeriod) => {
+      return loadPage(1, true, null, nextPeriod || "all");
+    },
+    [loadPage]
+  );
+
+  const loadAllForPrint = useCallback(
+    async (period = periodFilterRef.current, order = sortOrderRef.current) => {
+      const dateConstraints = getPeriodQueryConstraints("tarikh", period);
+      return loadByQuery([...dateConstraints, orderBy("tarikh", order)]);
+    },
+    [loadByQuery]
+  );
 
   const addPenguatkuasaan = useCallback(
     async (payload) => {
@@ -235,9 +291,12 @@ export function usePenguatkuasaan() {
     totalCount,
     currentPage,
     sortOrder,
+    periodFilter,
     loadingPage,
     loadPage,
     toggleSortOrder,
+    changePeriodFilter,
+    loadAllForPrint,
     loadByQuery,
     loadByPeriod,
     addPenguatkuasaan,

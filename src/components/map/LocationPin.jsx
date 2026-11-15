@@ -1,8 +1,4 @@
-export function getPinColor(risk) {
-  if (risk >= 75) return "#dc5d4d";
-  if (risk >= 68) return "#eba34b";
-  return "#e8bb57";
-}
+import { getPinColor } from "../../utils/locations";
 
 export default function LocationPin({
   location,
