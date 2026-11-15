@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import Chip from "../shared/Chip";
 import SamanBatchInput from "./SamanBatchInput";
 import { useRegisterUnsavedForm } from "../../hooks/useUnsavedChanges";
+import { validateSamanRows } from "../../utils/saman";
 
 export default function PenguatkuasaanForm({
   activeLocations = [],
@@ -15,7 +16,10 @@ export default function PenguatkuasaanForm({
   const [sita, setSita] = useState(0);
   const [jamMula, setJamMula] = useState("");
   const [jamAkhir, setJamAkhir] = useState("");
-  const [samanRows, setSamanRows] = useState([""]);
+  const [samanRows, setSamanRows] = useState([
+    { no_saman: "", kategori_saman: "" },
+  ]);
+  const [samanValidationErrors, setSamanValidationErrors] = useState({});
   const [samanResetKey, setSamanResetKey] = useState(0);
   const [statusText, setStatusText] = useState(
     "Status: Sedia untuk kemasukan rekod operasi baharu (simulasi)."
@@ -41,7 +45,7 @@ export default function PenguatkuasaanForm({
       jamMula !== "" ||
       jamAkhir !== "" ||
       samanRows.length !== 1 ||
-      samanRows[0] !== "",
+      Boolean(samanRows[0]?.no_saman || samanRows[0]?.kategori_saman),
     [
       tarikh,
       effectiveLocationId,
@@ -71,8 +75,16 @@ export default function PenguatkuasaanForm({
     setSita(0);
     setJamMula("");
     setJamAkhir("");
-    setSamanRows([""]);
+    setSamanRows([{ no_saman: "", kategori_saman: "" }]);
+    setSamanValidationErrors({});
     setSamanResetKey((k) => k + 1);
+  };
+
+  const handleSamanChange = (nextRows) => {
+    setSamanRows(nextRows);
+    if (Object.keys(samanValidationErrors).length > 0) {
+      setSamanValidationErrors({});
+    }
   };
 
   const handleReset = () => {
@@ -82,6 +94,17 @@ export default function PenguatkuasaanForm({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const samanCheck = validateSamanRows(samanRows, {
+      allowUnsetForLegacy: false,
+    });
+    if (!samanCheck.valid) {
+      setSamanValidationErrors(samanCheck.rowErrors);
+      setStatusText(`Ralat: ${samanCheck.error}`);
+      return;
+    }
+
+    setSamanValidationErrors({});
     setSubmitting(true);
 
     try {
@@ -89,7 +112,7 @@ export default function PenguatkuasaanForm({
         (l) => l.id === effectiveLocationId
       );
       const savedTarikh = tarikh;
-      const samanList = samanRows.map((s) => s.trim()).filter(Boolean);
+      const samanList = samanCheck.cleanList;
 
       await onAddOperation({
         tarikh: savedTarikh,
@@ -296,9 +319,10 @@ export default function PenguatkuasaanForm({
         <SamanBatchInput
           key={samanResetKey}
           value={samanRows}
-          onChange={setSamanRows}
+          onChange={handleSamanChange}
           disabled={submitting}
           fieldNumber={9}
+          validationErrors={samanValidationErrors}
         />
 
         {/* Actions */}

@@ -5,6 +5,12 @@ import {
   useRegisterUnsavedForm,
   isFormStateDirty,
 } from "../../hooks/useUnsavedChanges";
+import {
+  SAMAN_CATEGORIES,
+  UNSET_SAMAN_CATEGORY,
+  coerceStoredSamanCategory,
+  normalizeSamanCategory,
+} from "../../utils/saman";
 
 export default function SiasatanTable({
   records = [],
@@ -77,6 +83,7 @@ export default function SiasatanTable({
     setEditingRecord(rec);
     const snapshot = {
       no_saman: rec.no_saman || "",
+      kategori_saman: coerceStoredSamanCategory(rec.kategori_saman),
       no_kenderaan: rec.no_kenderaan || "",
       no_ic: rec.no_ic ?? "",
       nama: rec.nama || "",
@@ -129,6 +136,18 @@ export default function SiasatanTable({
     e.preventDefault();
     if (!editingRecord || !formState || !onUpdateRecord) return;
 
+    const normalizedKategori = normalizeSamanCategory(formState.kategori_saman);
+    const keepLegacyUnset =
+      initialFormState?.kategori_saman === UNSET_SAMAN_CATEGORY &&
+      formState.kategori_saman === UNSET_SAMAN_CATEGORY;
+
+    if (!normalizedKategori && !keepLegacyUnset) {
+      setModalError(
+        "Sila pilih Kategori Saman yang sah (POL 170 A atau POL 257)."
+      );
+      return;
+    }
+
     setSaving(true);
     setModalError("");
     try {
@@ -139,6 +158,7 @@ export default function SiasatanTable({
 
       await onUpdateRecord(editingRecord.id, {
         no_saman: formState.no_saman.trim(),
+        kategori_saman: normalizedKategori || UNSET_SAMAN_CATEGORY,
         no_kenderaan: formState.no_kenderaan.trim().toUpperCase(),
         no_ic: Number(formState.no_ic),
         nama: formState.nama.trim().toUpperCase(),
@@ -187,6 +207,7 @@ export default function SiasatanTable({
           <thead>
             <tr className="border-b border-[var(--color-table-border)] text-[var(--color-table-header)] text-xs">
               <th className="text-left py-3 px-2">No. Saman</th>
+              <th className="text-left py-3 px-2">Kategori Saman</th>
               <th className="text-left py-3 px-2">No. Kenderaan</th>
               <th className="text-left py-3 px-2">Lokasi Hotspot</th>
               <th className="text-left py-3 px-2">Tempat</th>
@@ -219,7 +240,7 @@ export default function SiasatanTable({
             {loading ? (
               <tr className="border-b border-[var(--color-table-border)] text-xs">
                 <td
-                  colSpan={10}
+                  colSpan={11}
                   className="py-4 px-2 text-center text-[var(--color-text-secondary)]"
                 >
                   Memuatkan halaman {currentPage} dari Firestore...
@@ -228,48 +249,65 @@ export default function SiasatanTable({
             ) : records.length === 0 ? (
               <tr className="border-b border-[var(--color-table-border)] text-xs">
                 <td
-                  colSpan={10}
+                  colSpan={11}
                   className="py-3 px-2 text-[var(--color-text-secondary)]"
                 >
                   Tiada rekod siasatan direkodkan.
                 </td>
               </tr>
             ) : (
-              records.map((r) => (
-                <tr
-                  key={r.id || r.no_saman}
-                  onClick={() => openEditModal(r)}
-                  title={
-                    canEdit
-                      ? "Klik untuk kemas kini rekod siasatan ini"
-                      : "Hanya Pegawai Siasatan atau Admin boleh mengemas kini rekod"
-                  }
-                  className={`border-b border-[var(--color-table-border)] text-xs transition-colors ${
-                    canEdit
-                      ? "cursor-pointer hover:bg-[#192b49]/80"
-                      : "hover:bg-[#192b49]/35"
-                  }`}
-                >
-                  <td className="py-3 px-2 font-semibold">{r.no_saman}</td>
-                  <td className="py-3 px-2">{r.no_kenderaan}</td>
-                  <td className="py-3 px-2">{r.location_name}</td>
-                  <td className="py-3 px-2">{r.tempat_kemalangan}</td>
-                  <td className="py-3 px-2">
-                    {r.tarikh_kemalangan} {r.waktu_kejadian}
-                  </td>
-                  <td className="py-3 px-2">{r.kategori_kenderaan}</td>
-                  <td className="py-3 px-2">{r.kesalahan}</td>
-                  <td className="py-3 px-2">
-                    {r.melibatkan_binatang
-                      ? `Ya (${r.jenis_binatang})`
-                      : "Tidak"}
-                  </td>
-                  <td className="py-3 px-2">{r.jenis_kemalangan}</td>
-                  <td className="py-3 px-2">
-                    {r.maut ? `Ya (${r.bilangan_maut} nyawa)` : "Tidak"}
-                  </td>
-                </tr>
-              ))
+              records.map((r) => {
+                const kat = coerceStoredSamanCategory(r.kategori_saman);
+                const badgeClass =
+                  kat === "POL 170 A"
+                    ? "bg-sky-500/15 text-sky-300 border-sky-500/35"
+                    : kat === "POL 257"
+                      ? "bg-violet-500/15 text-violet-300 border-violet-500/35"
+                      : "bg-slate-500/15 text-[var(--color-text-secondary)] border-[var(--color-border-light)]";
+
+                return (
+                  <tr
+                    key={r.id || r.no_saman}
+                    onClick={() => openEditModal(r)}
+                    title={
+                      canEdit
+                        ? "Klik untuk kemas kini rekod siasatan ini"
+                        : "Hanya Pegawai Siasatan atau Admin boleh mengemas kini rekod"
+                    }
+                    className={`border-b border-[var(--color-table-border)] text-xs transition-colors ${
+                      canEdit
+                        ? "cursor-pointer hover:bg-[#192b49]/80"
+                        : "hover:bg-[#192b49]/35"
+                    }`}
+                  >
+                    <td className="py-3 px-2 font-semibold">{r.no_saman}</td>
+                    <td className="py-3 px-2 whitespace-nowrap">
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold border ${badgeClass}`}
+                      >
+                        {kat}
+                      </span>
+                    </td>
+                    <td className="py-3 px-2">{r.no_kenderaan}</td>
+                    <td className="py-3 px-2">{r.location_name}</td>
+                    <td className="py-3 px-2">{r.tempat_kemalangan}</td>
+                    <td className="py-3 px-2">
+                      {r.tarikh_kemalangan} {r.waktu_kejadian}
+                    </td>
+                    <td className="py-3 px-2">{r.kategori_kenderaan}</td>
+                    <td className="py-3 px-2">{r.kesalahan}</td>
+                    <td className="py-3 px-2">
+                      {r.melibatkan_binatang
+                        ? `Ya (${r.jenis_binatang})`
+                        : "Tidak"}
+                    </td>
+                    <td className="py-3 px-2">{r.jenis_kemalangan}</td>
+                    <td className="py-3 px-2">
+                      {r.maut ? `Ya (${r.bilangan_maut} nyawa)` : "Tidak"}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -389,10 +427,39 @@ export default function SiasatanTable({
                 />
               </div>
 
-              {/* 2. No. Kenderaan */}
+              {/* 2. Kategori Saman */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  2. No. Kenderaan
+                  2. Kategori Saman
+                </label>
+                <select
+                  value={formState.kategori_saman}
+                  onChange={(e) =>
+                    setFormState((p) => ({
+                      ...p,
+                      kategori_saman: e.target.value,
+                    }))
+                  }
+                  required
+                  className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+                >
+                  {initialFormState?.kategori_saman === UNSET_SAMAN_CATEGORY && (
+                    <option value={UNSET_SAMAN_CATEGORY}>
+                      {UNSET_SAMAN_CATEGORY} (Rekod Lama)
+                    </option>
+                  )}
+                  {SAMAN_CATEGORIES.map((kat) => (
+                    <option key={kat} value={kat}>
+                      {kat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 3. No. Kenderaan */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-[var(--color-text-label)] font-semibold">
+                  3. No. Kenderaan
                 </label>
                 <input
                   type="text"
@@ -408,10 +475,10 @@ export default function SiasatanTable({
                 />
               </div>
 
-              {/* 3. No. IC */}
+              {/* 4. No. IC */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  3. No. IC
+                  4. No. IC
                 </label>
                 <input
                   type="number"
@@ -424,10 +491,10 @@ export default function SiasatanTable({
                 />
               </div>
 
-              {/* 4. Nama */}
+              {/* 5. Nama */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  4. Nama
+                  5. Nama
                 </label>
                 <input
                   type="text"
@@ -440,10 +507,10 @@ export default function SiasatanTable({
                 />
               </div>
 
-              {/* 5. Umur */}
+              {/* 6. Umur */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  5. Umur
+                  6. Umur
                 </label>
                 <input
                   type="number"
@@ -458,10 +525,10 @@ export default function SiasatanTable({
                 />
               </div>
 
-              {/* 6. Alamat */}
-              <div className="flex flex-col gap-1.5">
+              {/* 7. Alamat */}
+              <div className="col-span-full flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  6. Alamat
+                  7. Alamat
                 </label>
                 <input
                   type="text"
@@ -474,10 +541,10 @@ export default function SiasatanTable({
                 />
               </div>
 
-              {/* 7. Lokasi Hotspot / Jalan */}
+              {/* 8. Lokasi Hotspot / Jalan */}
               <div className="col-span-full flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  7. Lokasi Hotspot / Jalan
+                  8. Lokasi Hotspot / Jalan
                 </label>
                 <select
                   value={formState.location_id}
@@ -538,10 +605,10 @@ export default function SiasatanTable({
                 />
               </div>
 
-              {/* 8. Tarikh Kemalangan */}
+              {/* 9. Tarikh Kemalangan */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  8. Tarikh Kemalangan
+                  9. Tarikh Kemalangan
                 </label>
                 <input
                   type="date"
@@ -557,10 +624,10 @@ export default function SiasatanTable({
                 />
               </div>
 
-              {/* 9. Waktu Kejadian */}
+              {/* 10. Waktu Kejadian */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  9. Waktu Kejadian (HH:MM)
+                  10. Waktu Kejadian (HH:MM)
                 </label>
                 <input
                   type="time"
@@ -576,10 +643,10 @@ export default function SiasatanTable({
                 />
               </div>
 
-              {/* 10. Kategori Kenderaan */}
+              {/* 11. Kategori Kenderaan */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  10. Kategori Kenderaan
+                  11. Kategori Kenderaan
                 </label>
                 <select
                   value={formState.kategori_kenderaan}
@@ -604,10 +671,10 @@ export default function SiasatanTable({
                 </select>
               </div>
 
-              {/* 11. Kesalahan */}
+              {/* 12. Kesalahan */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  11. Kesalahan (Punca Kemalangan)
+                  12. Kesalahan (Punca Kemalangan)
                 </label>
                 <select
                   value={formState.kesalahan}
@@ -628,10 +695,10 @@ export default function SiasatanTable({
                 </select>
               </div>
 
-              {/* 12. Melibatkan Binatang */}
+              {/* 13. Melibatkan Binatang */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  12. Melibatkan Binatang
+                  13. Melibatkan Binatang
                 </label>
                 <div className="flex gap-4 items-center py-1.5 text-[13px]">
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -691,10 +758,10 @@ export default function SiasatanTable({
                 </div>
               )}
 
-              {/* 13. Jenis Kemalangan */}
+              {/* 14. Jenis Kemalangan */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  13. Jenis Kemalangan
+                  14. Jenis Kemalangan
                 </label>
                 <select
                   value={formState.jenis_kemalangan}

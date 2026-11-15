@@ -8,6 +8,7 @@ export const seedSiasatan = [
   {
     id: "smn-2026-00311",
     no_saman: "SMN-2026-00311",
+    kategori_saman: "POL 257",
     no_kenderaan: "AJU 4521",
     no_ic: 40812085123,
     nama: "MOHD FAIZAL BIN CHE MAT",

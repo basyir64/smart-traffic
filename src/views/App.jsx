@@ -7,6 +7,12 @@ import { usePenguatkuasaan } from "../hooks/usePenguatkuasaan";
 import { useSelectedLocation } from "../hooks/useSelectedLocation";
 import MetricCard from "../components/metrics/MetricCard";
 import TrendBarChart from "../components/charts/TrendBarChart";
+import {
+  aggregatePeriodSaman,
+  getTrendBucketCount,
+  buildWeeklyDayKeys,
+  getTrendBucketIndex,
+} from "../utils/saman";
 import LocationRisk from "../components/locations/LocationRisk";
 import GoogleHotspotMap from "../components/map/GoogleHotspotMap";
 import HotspotList from "../components/locations/HotspotList";
@@ -205,10 +211,49 @@ export default function App() {
 
   const periodLabel = getPeriodLabelBM(period);
 
+  const samanSummary = useMemo(
+    () => aggregatePeriodSaman(periodRecords, periodOperations),
+    [periodRecords, periodOperations]
+  );
+
+  const samanSubtitle = useMemo(() => {
+    const base = `POL 170 A: ${samanSummary.pol170a} · POL 257: ${samanSummary.pol257}`;
+    return samanSummary.unset > 0
+      ? `${base} · Lain: ${samanSummary.unset}`
+      : base;
+  }, [samanSummary]);
+
+  const samanTrend = useMemo(() => {
+    const count = getTrendBucketCount(period);
+    const weeklyKeys = period === "weekly" ? buildWeeklyDayKeys() : [];
+    const buckets = Array.from({ length: count }, () => ({
+      pol170a: 0,
+      pol257: 0,
+      unset: 0,
+      total: 0,
+    }));
+
+    const ctx = { dayKeys: weeklyKeys };
+    samanSummary.items.forEach((item) => {
+      const idx = Math.max(
+        0,
+        Math.min(count - 1, getTrendBucketIndex(item.date, period, ctx))
+      );
+      const bucket = buckets[idx];
+      if (!bucket) return;
+      bucket.total += 1;
+      if (item.kategori_saman === "POL 170 A") bucket.pol170a += 1;
+      else if (item.kategori_saman === "POL 257") bucket.pol257 += 1;
+      else bucket.unset += 1;
+    });
+
+    return buckets;
+  }, [samanSummary, period]);
+
   return (
     <div>
-      {/* ── Top Row: 4 Metric Cards ── */}
-      <div className="grid grid-cols-4 max-[980px]:grid-cols-2 gap-3.5 max-[550px]:gap-2.5">
+      {/* ── Top Row: 5 Metric Cards ── */}
+      <div className="grid grid-cols-5 max-[1180px]:grid-cols-3 max-[650px]:grid-cols-2 gap-3.5 max-[550px]:gap-2.5">
         <MetricCard
           label="Jumlah Kemalangan"
           value={totalCases}
@@ -225,6 +270,11 @@ export default function App() {
           subtitle="Jumlah orang terkorban"
         />
         <MetricCard
+          label="Jumlah Saman"
+          value={samanSummary.total}
+          subtitle={samanSubtitle}
+        />
+        <MetricCard
           label="Perubahan Kes"
           value={`${changePct}%`}
           subtitle="Berbanding tempoh sebelumnya (simulasi)"
@@ -235,6 +285,7 @@ export default function App() {
       <div className="grid grid-cols-[1.45fr_1fr] max-[980px]:grid-cols-1 gap-4 mt-4">
         <TrendBarChart
           trend={liveTrend}
+          samanTrend={samanTrend}
           period={period}
         />
         <LocationRisk

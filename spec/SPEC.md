@@ -84,20 +84,21 @@ Derived from the prototype, the app has **4 main tabs/sections** plus shared UI:
 
 The default landing page. Contains:
 
-#### Metric Cards (top row, 4-column grid)
+#### Metric Cards (top row, 5-column responsive grid) — *(Dikemas kini UAT 2)*
 | Metric | Description |
 |---|---|
 | Jumlah Kemalangan | Total accident cases (all categories) |
 | Kemalangan Maut | Fatal accident cases |
 | Jumlah Kematian | Total fatalities (persons) |
 | Perubahan Kes | % change vs. previous period |
+| Jumlah Saman | Total unique summonses (`no_saman` deduplicated across `siasatan` + `penguatkuasaan`) in the active period with `POL 170 A` vs `POL 257` (and legacy `Belum Ditetapkan`) breakdown |
 
-#### Accident Trend Chart
-- Bar chart showing accident counts by time period subdivisions
-- Adapts labels based on period selector: Minggu (weekly → days), Bulan (monthly → weeks), Suku Tahun (quarterly → months)
+#### Accident & Saman Trend Chart (`Trend Kemalangan & Saman`) — *(Dikemas kini UAT 2)*
+- Bar chart showing period counts by time subdivisions (`Hari` / `Minggu` / `Bulan`), supporting mode toggle between **`Perbandingan`** (grouped side-by-side Accident vs Saman stacked bars `POL 170 A` / `POL 257`), **`Kemalangan`** only, and **`Saman`** only
+- Deduplicates `no_saman` across `siasatan` (`tarikh_kemalangan`) and `penguatkuasaan` (`tarikh`) in the active period so enforcement-to-crash correlation is visible without double-counting
 
 #### Period-Based Filtering (Mingguan / Bulanan / Suku Tahun)
-- Metric cards (Jumlah Kemalangan, Kemalangan Maut, Jumlah Kematian), Accident Trend Chart, Hotspot List, and Location Risk dynamically derive their counts strictly from live `siasatan` and `penguatkuasaan` records whose date (`tarikh_kemalangan` / `tarikh`) falls within the selected time window:
+- Metric cards (Jumlah Kemalangan, Kemalangan Maut, Jumlah Kematian, Jumlah Saman), Trend Chart, Hotspot List, Location Risk, and Dashboard CSV Export dynamically derive their counts strictly from live `siasatan` and `penguatkuasaan` records whose date (`tarikh_kemalangan` / `tarikh`) falls within the selected time window:
   - **Mingguan** (weekly): records within the last 7 days (`7 Nov – 14 Nov 2026`)
   - **Bulanan** (monthly, default): records in the current calendar month (`1 Nov – 30 Nov 2026`)
   - **Suku Tahun** (quarterly): records in the current 3-month calendar quarter (`1 Okt – 31 Dis 2026 (Suku 4)`)
@@ -144,27 +145,28 @@ Stacked vertically into four sections:
 4. **Faktor Penyumbang Direkodkan** (bottom-most)
 
 #### 1. Investigation Input Form (`Borang Input Data Siasatan`) — *(Dikemas kini UAT 2)*
-13 numbered fields (plus 2 dynamic read-only location preview fields):
-1. **No. Saman** (text)
-2. **No. Kenderaan** (text)
-3. **No. IC** (numerical)
-4. **Nama** (text)
-5. **Umur** (numerical, 0–120)
-6. **Alamat** (text)
-7. **Lokasi Hotspot / Jalan** (select populated from active `locations` collection: e.g. `KM31 JALAN IPOH-LUMUT (L/ISYARAT SIDEC)` — links each `siasatan` record via `location_id` + `location_name` to drive `Hotspot Keutamaan` & `Risiko Lokasi Pilihan` on Dashboard)
+14 numbered fields (plus 2 dynamic read-only location preview fields):
+1. **No. Saman** (text, required)
+2. **Kategori Saman** *(Baharu UAT 2 — wajib)*: Select starting unselected (`"-- Pilih Kategori Saman --"`) with options `POL 170 A` and `POL 257`.
+3. **No. Kenderaan** (text)
+4. **No. IC** (numerical)
+5. **Nama** (text)
+6. **Umur** (numerical, 0–120)
+7. **Alamat** (text)
+8. **Lokasi Hotspot / Jalan** (select populated from active `locations` collection: e.g. `KM31 JALAN IPOH-LUMUT (L/ISYARAT SIDEC)` — links each `siasatan` record via `location_id` + `location_name` to drive `Hotspot Keutamaan` & `Risiko Lokasi Pilihan` on Dashboard)
    - Includes a **`+ Tambah Lokasi`** button next to/inline with the dropdown that opens a modal containing the reusable location registration form (identical to `Lokasi` tab's `Borang Daftar Lokasi & Lampiran Blackspot`).
-   - Upon creating a new active location via the modal, it is immediately auto-selected in field `7. Lokasi Hotspot / Jalan` and the modal closes.
+   - Upon creating a new active location via the modal, it is immediately auto-selected in field `8. Lokasi Hotspot / Jalan` and the modal closes.
    - **Read-only Dynamic Location Preview Fields** *(populated automatically from the selected location; uneditable)*:
      - **Nama Jalan** (populated from `location.route`, corresponding to field 1 `Nama Laluan` of the Lokasi form)
      - **Jenis Jalan** (populated from `location.road_type`, corresponding to field 4 `Jenis Jalan` of the Lokasi form)
    - *(Note: The previous standalone editable field `Tempat Kemalangan (Jenis Jalan)` is removed from both `SiasatanForm` and `SiasatanTable`'s Edit Modal; `tempat_kemalangan` continues to be auto-derived and persisted from `selectedLocation.road_type` in Firestore so `9 Elemen Data Kemalangan` Element 4 and `SiasatanTable` continue working seamlessly.)*
-8. **Tarikh Kemalangan** (date)
-9. **Waktu Kejadian** (time `HH:MM`)
-10. **Kategori Kenderaan** (select: `Motosikal`, `Kereta`, `MPV / SUV`, `Van`, `Bas`, `Lori / Kenderaan Berat`, `Basikal`, `Lain-lain`)
-11. **Kesalahan / Punca Kemalangan** (select: `Kelajuan`, `Tidak peka keadaan sekeliling`, `Gagal patuh isyarat`, `Keadaan jalan`, `Langgar binatang`, `Faktor kenderaan`, `Lain-lain` — harmonized with the contributing factors analysis)
-12. **Melibatkan Binatang** (radio: `Tidak` / `Ya`)
+9. **Tarikh Kemalangan** (date)
+10. **Waktu Kejadian** (time `HH:MM`)
+11. **Kategori Kenderaan** (select: `Motosikal`, `Kereta`, `MPV / SUV`, `Van`, `Bas`, `Lori / Kenderaan Berat`, `Basikal`, `Lain-lain`)
+12. **Kesalahan / Punca Kemalangan** (select: `Kelajuan`, `Tidak peka keadaan sekeliling`, `Gagal patuh isyarat`, `Keadaan jalan`, `Langgar binatang`, `Faktor kenderaan`, `Lain-lain` — harmonized with the contributing factors analysis)
+13. **Melibatkan Binatang** (radio: `Tidak` / `Ya`)
     - When `Ya` is selected, reveals **Jenis Binatang** (select: `Kerbau`, `Lembu`, `Babi`, `Lain-lain`)
-13. **Jenis Kemalangan** (select: `Rosak sahaja`, `Cedera ringan`, `Cedera parah`, `Maut`)
+14. **Jenis Kemalangan** (select: `Rosak sahaja`, `Cedera ringan`, `Cedera parah`, `Maut`)
     - When `Maut` is selected, directly reveals **Bilangan Kematian (Nyawa)** (numerical, min 1). (Separate *Maut* radio button removed as redundant).
 - Actions: **Simpan Rekod Siasatan** (submit) and **Kosongkan Borang** (reset)
 
@@ -191,9 +193,9 @@ Live all-time aggregation table placed directly underneath the input form (font 
   - `- Kelajuan`, `- Tidak peka keadaan sekeliling`, `- Gagal patuh isyarat`, `- Keadaan jalan`, `- Langgar binatang`, `- Faktor kenderaan`, `- Lain-lain` (`[count] kes` each)
 
 #### 3. Investigation Records Table (`Senarai Rekod Siasatan`)
-- Displays submitted records sorted newest-first by default (`orderBy("tarikh_kemalangan", "desc")`), paginated at **5 records per page** with columns: No. Saman, No. Kenderaan, Lokasi Hotspot, Tempat, Tarikh & Waktu (`↓` / `↑`, clickable to toggle sort direction), Kenderaan, Kesalahan, Binatang, Jenis Kemalangan, Maut
+- Displays submitted records sorted newest-first by default (`orderBy("tarikh_kemalangan", "desc")`), paginated at **5 records per page** with columns: No. Saman, Kategori Saman (`POL 170 A` / `POL 257` / `Belum Ditetapkan`), No. Kenderaan, Lokasi Hotspot, Tempat, Tarikh & Waktu (`↓` / `↑`, clickable to toggle sort direction), Kenderaan, Kesalahan, Binatang, Jenis Kemalangan, Maut
 - **Quota-Preserving Native Firestore Pagination**: Uses `getCountFromServer` for total record count and `startAfter(cursor)` + `limit(5)` (`getDocs`) so Firestore reads are fired **only when the page or sort order changes** (modeled after `useSituationService` and `useStoryService`).
-- **Interactive Row Edit Modal (`Kemaskini Rekod Siasatan`)**: For authorized users (`Siasatan` or `Admin`), each row highlights on hover (`cursor: pointer`) and opens an edit modal on click to update the record in Firestore (`updateDoc`). *(UAT 2: Mirrors `SiasatanForm` — replaces editable `Tempat Kemalangan` dropdown with uneditable dynamic `Nama Jalan` and `Jenis Jalan` fields populated from the selected `Lokasi Hotspot / Jalan`, while auto-deriving and persisting `tempat_kemalangan` from `road_type`.)*
+- **Interactive Row Edit Modal (`Kemaskini Rekod Siasatan`)**: For authorized users (`Siasatan` or `Admin`), each row highlights on hover (`cursor: pointer`) and opens an edit modal on click to update the record in Firestore (`updateDoc`). *(UAT 2: Mirrors `SiasatanForm` fields `1`–`14`, includes `2. Kategori Saman`, replaces editable `Tempat Kemalangan` dropdown with uneditable dynamic `Nama Jalan` and `Jenis Jalan` fields populated from selected `Lokasi Hotspot / Jalan`, and auto-derives/persists `tempat_kemalangan` from `road_type`.)*
 - Includes total count badge, pagination controls (`← Sebelumnya`, page numbers, `Seterusnya →`), and privacy notice reminding users not to enter real IC or personal data
 
 #### 4. Contributing Factors Chart (`Faktor Penyumbang Direkodkan`)
@@ -223,17 +225,18 @@ Logs enforcement operations (roadblocks/ops) conducted by BSPT teams. Sections a
 6. **Sita** (numerical, min 0)
 7. **Jam Mula** (time `HH:MM`)
 8. **Jam Akhir** (time `HH:MM`)
-9. **Saman** *(Baharu UAT 2 — pilihan / 0 atau lebih saman)*:
-   - Numbered batch input rows starting at `1` (`No. 1`, `No. 2`, ...), where each row accepts a text `No. Saman` input matching the style of `Siasatan` field `1. No. Saman` (e.g. placeholder `Contoh: SMN-2026-00142`), plus a row remove button (`✕`).
+9. **Saman** *(Dikemas kini UAT 2 — pilihan / 0 atau lebih saman)*:
+   - Numbered batch input rows starting at `1` (`1.`, `2.`, ...), where each row pairs a text `No. Saman` input (matching `Siasatan` field `1. No. Saman`, placeholder `Contoh: SMN-2026-00142`) with a `Kategori Saman` select (`-- Pilih Kategori Saman --`, `POL 170 A`, `POL 257`), plus a row remove button (`✕`).
    - **`+ Tambah Saman`** button appends a new numbered row (`n + 1`).
-   - **CSV Import (`Import CSV`)**: Accepts `.csv` files with header `no, nombor_saman` (case-insensitive / trimmed).
-     - When non-empty saman rows already exist in the form, prompts the user to choose **Ganti Sedia Ada (Replace)** or **Tambah ke Senarai (Append)** before applying imported rows.
-     - Trims whitespace, skips blank `nombor_saman` rows, renumbers sequence `1..N` continuously, and surfaces clear validation errors for missing/invalid headers or duplicate values.
-   - Optional on submit: blank saman rows are ignored (`0` saman allowed; stored as `saman_list: string[]`).
+   - **CSV Template Download (`Muat Turun Templat CSV`)**: Generates and downloads `templat_saman_penguatkuasaan.csv` containing only the canonical header `no,nombor_saman,kategori_saman` (no sample rows).
+   - **CSV Import (`Import CSV`)**: Accepts `.csv` files with headers `no, nombor_saman, kategori_saman` (case-insensitive / trimmed).
+     - Normalizes `kategori_saman` inputs (e.g. casing/whitespace variants -> `"POL 170 A"` or `"POL 257"`), rejects blank/unrecognised `kategori_saman` values or invalid sequence numbers with row-specific Bahasa Melayu error messages, detects duplicate `nombor_saman` entries, and sorts sequence `1..N`.
+     - When non-empty saman rows already exist in the form, prompts the user to choose **Ganti Senarai Sedia Ada (Replace)**, **Tambah ke Senarai (Append)**, or **Batal** before applying imported rows.
+   - **UI & Submit Validation**: Completely blank optional rows are ignored on save (`0` saman allowed; stored as `saman_list: Array<{ no_saman, kategori_saman }>`), while partially filled rows (number without category or category without number) and duplicate `no_saman` entries across rows fail validation with inline row highlights and clear Bahasa Melayu messages.
 
 #### 2. Enforcement Operations Table (`Senarai Rekod Penguatkuasaan`)
 - Placed full-width directly below the input form
-- Displays logged enforcement operations sorted newest-first by default (`orderBy("tarikh", "desc")`), paginated at **5 operations per page** with columns: Tarikh (`↓` / `↑`, clickable to toggle sort direction), Lokasi, Jenis Operasi, Kat. Kemalangan, Tangkapan, Sita, Saman (`[count] saman` + preview/tooltip), Masa (`jam_mula`–`jam_akhir`)
+- Displays logged enforcement operations sorted newest-first by default (`orderBy("tarikh", "desc")`), paginated at **5 operations per page** with columns: Tarikh (`↓` / `↑`, clickable to toggle sort direction), Lokasi, Jenis Operasi, Kat. Kemalangan, Tangkapan, Sita, Saman (`[count] saman` + `POL 170 A` / `POL 257` / `Belum Ditetapkan` breakdown & preview/tooltip), Masa (`jam_mula`–`jam_akhir`)
 - **Quota-Preserving Native Firestore Pagination**: Uses `getCountFromServer` for total operation count and `startAfter(cursor)` + `limit(5)` (`getDocs`) so Firestore reads are fired **only when the page or sort order changes**
 - **Interactive Row Edit Modal (`Kemaskini Rekod Penguatkuasaan`)**: For authorized users (`Penguatkuasaan` or `Admin`), each row highlights on hover (`cursor: pointer`) and opens an edit modal on click (including numbered fields `1`–`9` and the `9. Saman` batch editor + CSV import) to update the operation in Firestore (`updateDoc`).
 - Includes total count badge (`[total] operasi`) and pagination controls (`← Sebelumnya`, page numbers, `Seterusnya →`)
@@ -444,21 +447,22 @@ smarttraffic-db/
 ├── siasatan/                     # Investigation records (from Siasatan tab)
 │   └── {siasatanId}/
 │       ├── no_saman: string      # 1. No. Saman
-│       ├── no_kenderaan: string  # 2. No. Kenderaan
-│       ├── no_ic: number         # 3. No. IC (numerical)
-│       ├── nama: string          # 4. Nama
-│       ├── umur: number          # 5. Umur (numerical)
-│       ├── alamat: string        # 6. Alamat
+│       ├── kategori_saman: string # 2. "POL 170 A" | "POL 257" | "Belum Ditetapkan" (legacy)
+│       ├── no_kenderaan: string  # 3. No. Kenderaan
+│       ├── no_ic: number         # 4. No. IC (numerical)
+│       ├── nama: string          # 5. Nama
+│       ├── umur: number          # 6. Umur (numerical)
+│       ├── alamat: string        # 7. Alamat
 │       ├── tempat_kemalangan: string # Auto-derived from selected location.road_type ("Lebuh Raya" | "Persekutuan" | "Negeri" | "Lain-lain")
-│       ├── location_id: string   # 7. Deterministic ref to locations/{locationId} (e.g. "km31-jalan-ipoh-lumut")
+│       ├── location_id: string   # 8. Deterministic ref to locations/{locationId} (e.g. "km31-jalan-ipoh-lumut")
 │       ├── location_name: string # Denormalized location name (e.g. "KM31 JALAN IPOH-LUMUT (L/ISYARAT SIDEC)")
-│       ├── tarikh_kemalangan: string # 8. YYYY-MM-DD
-│       ├── waktu_kejadian: string    # 9. HH:MM
-│       ├── kategori_kenderaan: string # 10. "Motosikal" | "Kereta" | "MPV / SUV" | "Van" | "Bas" | "Lori / Kenderaan Berat" | "Basikal" | "Lain-lain"
-│       ├── kesalahan: string     # 11. "Kelajuan" | "Tidak peka keadaan sekeliling" | "Gagal patuh isyarat" | "Keadaan jalan" | "Langgar binatang" | "Faktor kenderaan" | "Lain-lain"
-│       ├── melibatkan_binatang: boolean # 12. true ("Ya") | false ("Tidak")
+│       ├── tarikh_kemalangan: string # 9. YYYY-MM-DD
+│       ├── waktu_kejadian: string    # 10. HH:MM
+│       ├── kategori_kenderaan: string # 11. "Motosikal" | "Kereta" | "MPV / SUV" | "Van" | "Bas" | "Lori / Kenderaan Berat" | "Basikal" | "Lain-lain"
+│       ├── kesalahan: string     # 12. "Kelajuan" | "Tidak peka keadaan sekeliling" | "Gagal patuh isyarat" | "Keadaan jalan" | "Langgar binatang" | "Faktor kenderaan" | "Lain-lain"
+│       ├── melibatkan_binatang: boolean # 13. true ("Ya") | false ("Tidak")
 │       ├── jenis_binatang: string | null # "Kerbau" | "Lembu" | "Babi" | "Lain-lain" | null
-│       ├── jenis_kemalangan: string # 13. "Maut" | "Cedera parah" | "Cedera ringan" | "Rosak sahaja"
+│       ├── jenis_kemalangan: string # 14. "Maut" | "Cedera parah" | "Cedera ringan" | "Rosak sahaja"
 │       ├── maut: boolean         # Derived: true when jenis_kemalangan == "Maut", false otherwise
 │       ├── bilangan_maut: number # 0 when maut=false, >=1 when maut=true
 │       └── created_at: timestamp
@@ -474,7 +478,7 @@ smarttraffic-db/
 │       ├── sita: number          # 6. Number of vehicle seizures
 │       ├── jam_mula: string      # 7. HH:MM
 │       ├── jam_akhir: string     # 8. HH:MM
-│       ├── saman_list: string[]  # 9. Optional array of saman numbers (e.g. ["SMN-2026-001", ...]; [] if none)
+│       ├── saman_list: Array<{ no_saman: string, kategori_saman: string }> # 9. Optional array of { no_saman, kategori_saman } ("POL 170 A" | "POL 257" | "Belum Ditetapkan" for legacy); [] if none
 │       └── created_at: timestamp
 │
 └── factors/                      # Contributing factor data
@@ -488,13 +492,11 @@ smarttraffic-db/
 
 To ensure `users`, `locations`, `periods`, `siasatan`, and `penguatkuasaan` are populated automatically on app startup without duplicating data or relying on in-memory fallbacks:
 1. **Seed Payloads (`src/data/seedUsers.js`, `seedLocations.js`, `seedPeriods.js`, `seedSiasatan.js`, `seedPenguatkuasaan.js`)**: Export deterministic objects with fixed document IDs matching official BSPT officers, Lampiran Blackspot, and Lampiran Hotspot routes (Perak zone):
-   - `km31-jalan-ipoh-lumut`: `KM31 JALAN IPOH-LUMUT (L/ISYARAT SIDEC)` — `LAMPIRAN BLACKSPOT`
-   - `km30-jalan-ipoh-lumut`: `KM30 JALAN IPOH-LUMUT (L/ISYARAT BDR UNIVERSITI)` — `Lampiran Hotspot 1`
-   - `km32-jalan-ipoh-lumut`: `KM32 JALAN IPOH-LUMUT (L/ISYARAT UITM)` — `Lampiran Hotspot 2`
-   - `km23-jalan-bruas-parit-ipoh`: `KM23 JALAN BRUAS-PARIT-IPOH (L/ISYARAT PEKAN PARIT)` — `Lampiran Hotspot 3`
-   - `km1-jalan-bota-kanan-teluk-intan`: `KM1 JALAN BOTA KANAN-TELUK INTAN (PEKAN BOTA)` — `Lampiran Hotspot 4`
-   - `km14-jalan-sitiawan`: `KM14 JALAN SITIAWAN-LUMUT (SIMPANG EMPAT)` — `LAMPIRAN BLACKSPOT`
-   - `persimpangan-seri-manjung`: `PERSIMPANGAN UTAMA SERI MANJUNG` — `DALAMAN BSPT`
+   - `km31-jalan-ipoh-lumut`: `KM31 JALAN IPOH-LUMUT (L/ISYARAT SIDEC)` — `LAMPIRAN BLACKSPOT` (`is_blackspot: true`)
+   - `km30-jalan-ipoh-lumut`: `KM30 JALAN IPOH-LUMUT (L/ISYARAT BDR UNIVERSITI)` — `LAMPIRAN HOTSPOT 1` (`is_blackspot: false`)
+   - `km32-jalan-ipoh-lumut`: `KM32 JALAN IPOH-LUMUT (L/ISYARAT UITM)` — `LAMPIRAN HOTSPOT 2` (`is_blackspot: false`)
+   - `km23-jalan-bruas-parit-ipoh`: `KM23 JALAN BRUAS-PARIT-IPOH (L/ISYARAT PEKAN PARIT)` — `LAMPIRAN HOTSPOT 3` (`is_blackspot: false`)
+   - `km1-jalan-bota-kanan-teluk-intan`: `KM1 JALAN BOTA KANAN-TELUK INTAN (PEKAN BOTA)` — `LAMPIRAN HOTSPOT 4` (`is_blackspot: false`)
 2. **Idempotent Startup Check & Count Verification (`src/services/bootstrapData.js`)**:
    - Invoked once on app mount after Firebase initializes.
    - Uses `getCountFromServer(collection(db, collectionName))` (following the pattern in `useSituationService.js`) across `users`, `locations`, `periods`, `siasatan`, and `penguatkuasaan`.
@@ -552,6 +554,7 @@ src/
 ├── i18n.js                       # i18n config (keep, reconfigure)
 ├── auth-context.jsx              # Auth state + Firestore user profile (name, role)
 ├── period-context.jsx            # Period state (weekly/monthly/quarterly)
+├── unsaved-changes-context.jsx   # Global unsaved form/modal tracking & navigation blocker state
 │
 ├── data/
 │   ├── seedLocations.js          # Canonical hotspot & Lampiran Blackspot locations dump payload
@@ -560,6 +563,8 @@ src/
 │   └── seedPenguatkuasaan.js     # Canonical enforcement operations (7 ops across Weekly, Monthly, Quarterly)
 ├── services/
 │   └── bootstrapData.js          # Idempotent startup seeder (getCountFromServer + writeBatch)
+├── utils/
+│   └── saman.js                  # Shared Kategori Saman constants, CSV/input normalizers, UI validators & Dashboard saman deduplication aggregator
 │
 ├── views/
 │   ├── Login.jsx                 # Email/password login screen (no sign-up)
@@ -587,12 +592,12 @@ src/
 │   │   ├── LokasiForm.jsx        # Reusable location & blackspot registration form (supports inline card & modal variants)
 │   │   └── LokasiTable.jsx       # Locations master table with active/inactive toggle
 │   ├── siasatan/
-│   │   ├── SiasatanForm.jsx      # 13-field investigation input form + inline location modal & read-only location fields
+│   │   ├── SiasatanForm.jsx      # 14-field investigation input form + Kategori Saman + inline location modal & read-only location fields
 │   │   ├── SiasatanAggregation.jsx # 9 Elemen Data Kemalangan live aggregation table
 │   │   └── SiasatanTable.jsx     # Investigation records table & edit modal
 │   ├── penguatkuasaan/
-│   │   ├── PenguatkuasaanForm.jsx # 9-field enforcement operation input form (with batch Saman & CSV import)
-│   │   ├── SamanBatchInput.jsx   # Reusable numbered batch saman input + CSV import helper (used by form & edit modal)
+│   │   ├── PenguatkuasaanForm.jsx # 9-field enforcement operation input form (with batch Saman, Kategori Saman & CSV template/import)
+│   │   ├── SamanBatchInput.jsx   # Reusable numbered batch saman + Kategori Saman input, template download & CSV import/validator
 │   │   └── PenguatkuasaanTable.jsx # Enforcement operations table & edit modal
 │   ├── nav/
 │   │   ├── TabNav.jsx            # 4-tab navigation
@@ -600,14 +605,16 @@ src/
 │   └── shared/
 │       ├── Chip.jsx              # Label chip/badge
 │       ├── DemoBanner.jsx        # "DATA SIMULASI" warning
-│       └── ExportButton.jsx      # CSV download
+│       ├── ExportButton.jsx      # CSV download
+│       └── UnsavedChangesModal.jsx # Styled Bahasa Melayu navigation loss warning dialog
 │
 ├── hooks/
 │   ├── useLocations.js           # Firestore query & mutations (add/toggle active) for locations
 │   ├── usePeriodData.js          # Firestore query for period stats
 │   ├── useSiasatan.js            # Firestore query & mutation for siasatan records
 │   ├── usePenguatkuasaan.js      # Firestore query & mutation for penguatkuasaan records
-│   └── useSelectedLocation.js    # Location selection state
+│   ├── useSelectedLocation.js    # Location selection state
+│   └── useUnsavedChanges.js      # Form dirty-state hook & modal snapshot comparator
 │
 └── i18n/
     └── bm.json                   # Bahasa Melayu (UI 100% BM sahaja)
@@ -690,6 +697,7 @@ To be prioritized and implemented after the conclusion of the First Round of UAT
 1. **Gemini Patrol Briefing & Order Generator (`[📄 Jana Arahan Penugasan Operasi]`)**: Automated generation of police-standard operational orders in the `Penguatkuasaan` tab, complete with copy-to-clipboard functionality for WhatsApp/memo distribution.
 2. **Gemini 9-Element IPRS Multi-Variable Intelligence Summarizer (`[🔍 Analisis Korelasi 9 Elemen]`)**: Executive cross-tab correlation analysis in the `Siasatan` tab providing 3-bullet intelligence summaries for the OCPD.
 3. **Natural Language Traffic Inquiry ("Tanya AI BSPT")**: Interactive command drawer for station commanders to ask real-time questions in natural Malay against the live incident database.
+4. **Hotspot, Map & LocationRisk Saman Context (`Dashboard Utama`)**: Per-location deduplicated saman count and `POL 170 A` / `POL 257` breakdown badges in `Hotspot Keutamaan`, Google Maps `InfoWindow`, and `Risiko Lokasi Pilihan` (plus feeding summons enforcement volume into `synthesizeFromRecords` and Gemini AI prompts while preserving the mathematical `Skor Risiko` formula).
 
 ---
 
@@ -801,9 +809,9 @@ To be prioritized and implemented after the conclusion of the First Round of UAT
   - Field numbering is strictly `1`–`9` (including `2. Lokasi Hotspot / Jalan` and `9. Saman`).
   - Batch `+ Tambah Saman`, row removal, CSV import (`no, nombor_saman`) with Replace/Append confirmation on non-empty rows, optional empty submission, and table/edit modal persistence all work end-to-end.
 
-#### UAT 2 · Phase 2 — Navigation & Form Safety Enhancements ⏳ PENDING REVIEW
+#### UAT 2 · Phase 2 — Navigation Safety, `Kategori Saman` & Dashboard Saman Analytics ✅ COMPLETED (2026-11-15)
 
-##### 1. Unsaved Form Data Loss Warning on Tab Switch & Navigation
+##### 1. Unsaved Form Data Loss Warning on Tab Switch & Navigation ✅ COMPLETED
 1. **Data Router Migration (`src/index.jsx`)**:
    - Upgrade React Router setup from declarative `<BrowserRouter basename="/smart-traffic">` to `createBrowserRouter(..., { basename: "/smart-traffic" })` + `<RouterProvider>` so native SPA navigation blocking (`useBlocker`) works uniformly across `<NavLink>` tab clicks, `<Link>` navigation (`[Log Masuk]`), programmatic `navigate()`, and browser **Back / Forward** history navigation.
    - Retain `SpaRedirectHandler` inside the root layout route (`Layout.jsx`) so GitHub Pages `?redirect=...` deep linking works identically.
@@ -828,11 +836,43 @@ To be prioritized and implemented after the conclusion of the First Round of UAT
      - **`Kekal di Halaman Ini`** *(stays on current page and preserves all form edits; also triggered by `Escape` or backdrop click)*.
      - **`Teruskan & Buang Perubahan`** *(discards unsaved edits and completes the pending tab switch / Back-Forward / `[Log Keluar]` action)*.
 
-##### 2. Verification Checklist (for Implementing Agent)
+##### 2. `Kategori Saman`, CSV Import Template + Validation & Dashboard Saman Visualizations ✅ COMPLETED
+1. **Shared Saman Utilities (`src/utils/saman.js`)**:
+   - Canonical constants: `SAMAN_CATEGORIES = ["POL 170 A", "POL 257"]`, `UNSET_SAMAN_CATEGORY = "Belum Ditetapkan"`.
+   - `normalizeSamanCategory(raw)`: normalizes case and spacing variants (e.g., `"pol 170a"`, `"POL170A"` -> `"POL 170 A"`; `"pol257"`, `"POL  257"` -> `"POL 257"`; returns `""` if unrecognised).
+   - `coerceStoredSamanCategory(raw)`: returns canonical `"POL 170 A"` / `"POL 257"`, or `"Belum Ditetapkan"` when missing on historical Firestore records.
+   - `normalizeSamanList(rawList)`: backward-compatibly coerces both legacy `string[]` entries and structured `{ no_saman, kategori_saman }` entries into canonical `{ no_saman, kategori_saman }[]`.
+   - `validateSamanRows(rows, { allowUnsetForLegacy })`: validates numbered UI batch rows before submission (allows totally empty rows as optional `0` saman; rejects partial rows missing either `no_saman` or `kategori_saman`, rejects `"Belum Ditetapkan"` on newly typed saman, and catches case-insensitive duplicate `no_saman` entries across rows).
+   - `aggregatePeriodSaman(records, operations)`: collects saman across both `siasatan` (`no_saman`, `kategori_saman`, `tarikh_kemalangan`) and `penguatkuasaan` (`saman_list`, `tarikh`), **deduplicating identical `no_saman` values** (case-insensitive) to compute `{ total, pol170a, pol257, unset, items }`.
+2. **Siasatan Field `2. Kategori Saman` & Renumbering `1`–`14`**:
+   - Add **`2. Kategori Saman`** immediately after `1. No. Saman` in both `SiasatanForm.jsx` and `SiasatanTable.jsx`'s Edit Modal, starting unselected (`""` / `"-- Pilih Kategori Saman --"`) with required selection of `"POL 170 A"` or `"POL 257"` (legacy records with `"Belum Ditetapkan"` preserve that label until explicitly changed).
+   - Shift remaining field labels from `2`–`13` to **`3`–`14`** (`3. No. Kenderaan` through `14. Jenis Kemalangan`) across both `SiasatanForm.jsx` and `SiasatanTable.jsx`.
+   - Include `Kategori Saman` dirty detection in `SiasatanForm.jsx` (`useRegisterUnsavedForm`) and reset it in `resetFields()`.
+   - Update `normalizeSiasatan` (`src/hooks/useSiasatan.js`) and `seedSiasatan.js` (`kategori_saman` persisted on `siasatan` docs; legacy docs default to `"Belum Ditetapkan"`).
+   - Display **`Kategori Saman`** badge column in `SiasatanTable.jsx` (`Senarai Rekod Siasatan`), keeping `SiasatanAggregation.jsx` unchanged at its 9 elements.
+3. **Penguatkuasaan CSV Template Download & Per-Saman `Kategori Saman` Validation**:
+   - Upgrade `SamanBatchInput.jsx` so every numbered row includes:
+     - `No. Saman` text input (`placeholder="Contoh: SMN-2026-00142"`)
+     - `Kategori Saman` `<select>` defaulting unselected (`"-- Pilih Kategori Saman --"` -> `POL 170 A` / `POL 257`, preserving `"Belum Ditetapkan"` option only for legacy rows already saved that way in Edit Modal)
+     - Row removal button (`✕`) and per-row inline validation styling/hint when incomplete or duplicated.
+   - Add **`↓ Muat Turun Templat CSV`** button downloading header-only `templat_saman_penguatkuasaan.csv` (`\ufeffno,nombor_saman,kategori_saman\r\n` — **no sample rows**).
+   - Update CSV parser (`parseSamanCsv`):
+     - Require `no`, `nombor_saman`, and `kategori_saman` headers (Bahasa Melayu error if missing).
+     - Validate non-empty sequence `no` (positive number), require non-empty `nombor_saman` whenever `kategori_saman` is present, normalize & validate `kategori_saman` against `POL 170 A` / `POL 257`, and surface row-numbered Bahasa Melayu errors for invalid rows.
+     - Keep `Ganti Senarai Sedia Ada` / `Tambah ke Senarai` / `Batal` confirmation when non-empty rows exist, plus case-insensitive duplicate `no_saman` deduplication.
+   - Update `PenguatkuasaanForm.jsx` (including dirty tracking for `{ no_saman, kategori_saman }` rows & `validateSamanRows` guard on submit), `PenguatkuasaanTable.jsx` (`Saman` column summarizing count + `POL 170 A` / `POL 257` / `Belum Ditetapkan` breakdown + Edit Modal validation & recursive `isFormStateDirty` support for object arrays), `usePenguatkuasaan.js`, and `seedPenguatkuasaan.js`.
+4. **Dashboard Saman Metrics, Comparison Trend Chart & CSV Export (`App.jsx`, `TrendBarChart.jsx`, `Layout.jsx`)**:
+   - **Idea A (Top KPI Card)**: Expand KPI row (`App.jsx`) to a 5-column responsive grid (`grid-cols-5 max-[1100px]:grid-cols-3 max-[980px]:grid-cols-2`) with a 5th `MetricCard` for **`Jumlah Saman`** showing deduplicated active-period saman total and subtitle **`POL 170 A: X · POL 257: Y`** (plus `Belum Ditetapkan: Z` if non-zero).
+   - **Idea B (`TrendBarChart.jsx`)**: Add view mode toggle (`Perbandingan` | `Kemalangan` | `Saman`) showing deduplicated saman counts bucketed across `Hari` / `Minggu` / `Bulan` alongside accidents, with stacked `POL 170 A` and `POL 257` (plus legacy `Belum Ditetapkan`) bars, interactive tooltips, and legend. Keep the existing `Skor Risiko` mathematical formula (`LocationRisk.jsx` / `App.jsx`) completely unchanged.
+   - **Idea D (`Layout.jsx` `handleExportCsv`)**: Append `Jumlah saman (unik)`, `Saman POL 170 A`, `Saman POL 257` (and legacy `Saman Belum Ditetapkan` when > 0) rows to `SMART_TRAFFIC_AI_demo.csv`.
+   - *(Idea C — HotspotList, GoogleHotspotMap & LocationRisk AI Saman Context — recorded separately under Post-UAT Bonus Requirements.)*
+
+##### 3. Verification Checklist (for Implementing Agent)
 - Confirm ESLint passes with zero errors/warnings on all created/modified files and `npm run build` succeeds.
-- Verify modifying any field on `SiasatanForm`, `PenguatkuasaanForm`, or `LokasiForm` warns on switching tabs, clicking `[Log Keluar]`, Browser Back/Forward, and browser reload (`beforeunload`).
-- Verify `Kekal di Halaman Ini` preserves typed inputs and user session; `Teruskan & Buang Perubahan` completes navigation/logout without double-prompting.
-- Verify submitting a form or clicking `Kosongkan Borang` clears the dirty flag so subsequent navigation proceeds without warning.
+- Verify Phase 2 Item 1 (Navigation Safety): editing forms/modals warns on tab switches, `[Log Keluar]`, Browser Back/Forward, and `beforeunload`, and clears on submit/`Kosongkan Borang` (including edited `Kategori Saman` & `SamanBatchInput` object arrays).
+- Verify `SiasatanForm` & `SiasatanTable`: field numbering is `1`–`14` (`2. Kategori Saman` required, starting unselected), `Kategori Saman` column/badge renders cleanly, and legacy records without `kategori_saman` display `"Belum Ditetapkan"`.
+- Verify `PenguatkuasaanForm` & `PenguatkuasaanTable`: `Muat Turun Templat CSV` downloads header-only CSV (`no,nombor_saman,kategori_saman`), CSV import normalizes/validates `POL 170 A` & `POL 257` with row-specific BM errors, UI blocks partial/duplicate saman rows, and legacy `string[]` `saman_list` records coerce safely to `"Belum Ditetapkan"`.
+- Verify Dashboard (`App.jsx`, `TrendBarChart.jsx`, `Layout.jsx`): `Jumlah Saman` KPI card & trend comparison bars deduplicate `no_saman` across `Siasatan` + `Penguatkuasaan`, CSV export includes Saman rows, and the existing `Skor Risiko` formula remains untouched.
 
 ---
 

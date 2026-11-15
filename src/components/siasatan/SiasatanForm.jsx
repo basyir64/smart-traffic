@@ -2,6 +2,10 @@ import { useState, useMemo } from "react";
 import Chip from "../shared/Chip";
 import LokasiForm from "../locations/LokasiForm";
 import { useRegisterUnsavedForm } from "../../hooks/useUnsavedChanges";
+import {
+  SAMAN_CATEGORIES,
+  normalizeSamanCategory,
+} from "../../utils/saman";
 
 export default function SiasatanForm({
   activeLocations = [],
@@ -9,6 +13,7 @@ export default function SiasatanForm({
   onAddLocation,
 }) {
   const [noSaman, setNoSaman] = useState("");
+  const [kategoriSaman, setKategoriSaman] = useState("");
   const [noKenderaan, setNoKenderaan] = useState("");
   const [noIc, setNoIc] = useState("");
   const [nama, setNama] = useState("");
@@ -45,6 +50,7 @@ export default function SiasatanForm({
   const isDirty = useMemo(
     () =>
       noSaman !== "" ||
+      kategoriSaman !== "" ||
       noKenderaan !== "" ||
       noIc !== "" ||
       nama !== "" ||
@@ -61,6 +67,7 @@ export default function SiasatanForm({
       String(bilanganMaut) !== "1",
     [
       noSaman,
+      kategoriSaman,
       noKenderaan,
       noIc,
       nama,
@@ -104,6 +111,7 @@ export default function SiasatanForm({
 
   const resetFields = () => {
     setNoSaman("");
+    setKategoriSaman("");
     setNoKenderaan("");
     setNoIc("");
     setNama("");
@@ -127,6 +135,14 @@ export default function SiasatanForm({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const validKategoriSaman = normalizeSamanCategory(kategoriSaman);
+    if (!validKategoriSaman) {
+      setStatusText(
+        "Ralat: Sila pilih Kategori Saman (POL 170 A atau POL 257) sebelum menyimpan."
+      );
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -135,6 +151,7 @@ export default function SiasatanForm({
 
       await onAddRecord({
         no_saman: savedSaman,
+        kategori_saman: validKategoriSaman,
         no_kenderaan: noKenderaan.trim().toUpperCase(),
         no_ic: Number(noIc),
         nama: nama.trim().toUpperCase(),
@@ -197,13 +214,37 @@ export default function SiasatanForm({
           />
         </div>
 
-        {/* 2. No. Kenderaan */}
+        {/* 2. Kategori Saman */}
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor="kategoriSaman"
+            className="text-xs text-[var(--color-text-label)] font-semibold"
+          >
+            2. Kategori Saman
+          </label>
+          <select
+            id="kategoriSaman"
+            value={kategoriSaman}
+            onChange={(e) => setKategoriSaman(e.target.value)}
+            required
+            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+          >
+            <option value="">-- Pilih Kategori Saman --</option>
+            {SAMAN_CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* 3. No. Kenderaan */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="noKenderaan"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            2. No. Kenderaan
+            3. No. Kenderaan
           </label>
           <input
             id="noKenderaan"
@@ -216,13 +257,13 @@ export default function SiasatanForm({
           />
         </div>
 
-        {/* 3. No. IC */}
+        {/* 4. No. IC */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="noIc"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            3. No. IC
+            4. No. IC
           </label>
           <input
             id="noIc"
@@ -236,13 +277,13 @@ export default function SiasatanForm({
           />
         </div>
 
-        {/* 4. Nama */}
+        {/* 5. Nama */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="nama"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            4. Nama
+            5. Nama
           </label>
           <input
             id="nama"
@@ -255,13 +296,13 @@ export default function SiasatanForm({
           />
         </div>
 
-        {/* 5. Umur */}
+        {/* 6. Umur */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="umur"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            5. Umur
+            6. Umur
           </label>
           <input
             id="umur"
@@ -277,13 +318,13 @@ export default function SiasatanForm({
           />
         </div>
 
-        {/* 6. Alamat */}
+        {/* 7. Alamat */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="alamat"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            6. Alamat
+            7. Alamat
           </label>
           <input
             id="alamat"
@@ -296,13 +337,13 @@ export default function SiasatanForm({
           />
         </div>
 
-        {/* 7. Lokasi Hotspot / Jalan (+ modal tambah lokasi) */}
+        {/* 8. Lokasi Hotspot / Jalan (+ modal tambah lokasi) */}
         <div className="col-span-full flex flex-col gap-1.5">
           <label
             htmlFor="lokasiHotspot"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            7. Lokasi Hotspot / Jalan
+            8. Lokasi Hotspot / Jalan
           </label>
           <div className="flex gap-2.5 items-stretch max-[550px]:flex-col">
             <select
@@ -375,13 +416,13 @@ export default function SiasatanForm({
           />
         </div>
 
-        {/* 8. Tarikh Kemalangan */}
+        {/* 9. Tarikh Kemalangan */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="tarikhKemalangan"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            8. Tarikh Kemalangan
+            9. Tarikh Kemalangan
           </label>
           <input
             id="tarikhKemalangan"
@@ -393,13 +434,13 @@ export default function SiasatanForm({
           />
         </div>
 
-        {/* 9. Waktu Kejadian (HH:MM) */}
+        {/* 10. Waktu Kejadian (HH:MM) */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="waktuKejadian"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            9. Waktu Kejadian (HH:MM)
+            10. Waktu Kejadian (HH:MM)
           </label>
           <input
             id="waktuKejadian"
@@ -411,13 +452,13 @@ export default function SiasatanForm({
           />
         </div>
 
-        {/* 10. Kategori Kenderaan */}
+        {/* 11. Kategori Kenderaan */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="kategoriKenderaan"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            10. Kategori Kenderaan
+            11. Kategori Kenderaan
           </label>
           <select
             id="kategoriKenderaan"
@@ -439,13 +480,13 @@ export default function SiasatanForm({
           </select>
         </div>
 
-        {/* 11. Kesalahan (Punca Kemalangan) */}
+        {/* 12. Kesalahan (Punca Kemalangan) */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="kesalahan"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            11. Kesalahan (Punca Kemalangan)
+            12. Kesalahan (Punca Kemalangan)
           </label>
           <select
             id="kesalahan"
@@ -466,10 +507,10 @@ export default function SiasatanForm({
           </select>
         </div>
 
-        {/* 12. Melibatkan Binatang */}
+        {/* 13. Melibatkan Binatang */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs text-[var(--color-text-label)] font-semibold">
-            12. Melibatkan Binatang
+            13. Melibatkan Binatang
           </label>
           <div className="flex gap-4 items-center py-1.5 text-[13px]">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -518,13 +559,13 @@ export default function SiasatanForm({
           </div>
         )}
 
-        {/* 13. Jenis Kemalangan */}
+        {/* 14. Jenis Kemalangan */}
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="jenisKemalangan"
             className="text-xs text-[var(--color-text-label)] font-semibold"
           >
-            13. Jenis Kemalangan
+            14. Jenis Kemalangan
           </label>
           <select
             id="jenisKemalangan"

@@ -15,13 +15,12 @@ import {
 import { db } from "../fb_cloud_firestore";
 import { bootstrapFirestoreData } from "../services/bootstrapData";
 import { getPeriodQueryConstraints } from "./usePeriodData";
+import { normalizeSamanList } from "../utils/saman";
 
 export const PENGUATKUASAAN_PAGE_SIZE = 5;
 
 export function normalizeOperation(raw) {
-  const saman_list = Array.isArray(raw.saman_list)
-    ? raw.saman_list.map((s) => String(s || "").trim()).filter(Boolean)
-    : [];
+  const saman_list = normalizeSamanList(raw.saman_list);
 
   return {
     id: raw.id || `op-${Date.now()}`,

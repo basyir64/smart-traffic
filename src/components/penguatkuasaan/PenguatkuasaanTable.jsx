@@ -6,6 +6,12 @@ import {
   useRegisterUnsavedForm,
   isFormStateDirty,
 } from "../../hooks/useUnsavedChanges";
+import {
+  UNSET_SAMAN_CATEGORY,
+  normalizeSamanList,
+  summarizeSamanCategories,
+  validateSamanRows,
+} from "../../utils/saman";
 
 export default function PenguatkuasaanTable({
   operations = [],
@@ -25,6 +31,7 @@ export default function PenguatkuasaanTable({
   const [initialFormState, setInitialFormState] = useState(null);
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState("");
+  const [modalSamanErrors, setModalSamanErrors] = useState({});
 
   const isEditModalDirty = useMemo(
     () =>
@@ -76,8 +83,12 @@ export default function PenguatkuasaanTable({
   const openEditModal = (op) => {
     if (!canEdit) return;
     setModalError("");
+    setModalSamanErrors({});
     setEditingOp(op);
-    const samanRows = op.saman_list?.length ? [...op.saman_list] : [""];
+    const normalizedSaman = normalizeSamanList(op.saman_list);
+    const samanRows = normalizedSaman.length
+      ? normalizedSaman.map((item) => ({ ...item }))
+      : [{ no_saman: "", kategori_saman: "" }];
     const snapshot = {
       tarikh: op.tarikh || "",
       location_id: op.location_id || activeLocations[0]?.id || "",
@@ -91,7 +102,10 @@ export default function PenguatkuasaanTable({
       saman_rows: samanRows,
     };
     setInitialFormState(snapshot);
-    setFormState({ ...snapshot, saman_rows: [...samanRows] });
+    setFormState({
+      ...snapshot,
+      saman_rows: samanRows.map((item) => ({ ...item })),
+    });
   };
 
   const closeEditModal = () => {
@@ -100,21 +114,32 @@ export default function PenguatkuasaanTable({
     setFormState(null);
     setInitialFormState(null);
     setModalError("");
+    setModalSamanErrors({});
   };
 
   const handleSaveEdit = async (e) => {
     e.preventDefault();
     if (!editingOp || !formState || !onUpdateOperation) return;
 
+    const hasLegacyUnset = (initialFormState?.saman_rows || []).some(
+      (r) => r.kategori_saman === UNSET_SAMAN_CATEGORY
+    );
+    const samanCheck = validateSamanRows(formState.saman_rows || [], {
+      allowUnsetForLegacy: hasLegacyUnset,
+    });
+    if (!samanCheck.valid) {
+      setModalSamanErrors(samanCheck.rowErrors);
+      setModalError(samanCheck.error);
+      return;
+    }
+
     setSaving(true);
     setModalError("");
+    setModalSamanErrors({});
     try {
       const selectedLoc = locationPool.find(
         (l) => l.id === formState.location_id
       );
-      const samanList = (formState.saman_rows || [])
-        .map((s) => s.trim())
-        .filter(Boolean);
 
       await onUpdateOperation(editingOp.id, {
         tarikh: formState.tarikh,
@@ -126,7 +151,7 @@ export default function PenguatkuasaanTable({
         sita: Math.max(0, parseInt(formState.sita, 10) || 0),
         jam_mula: formState.jam_mula,
         jam_akhir: formState.jam_akhir,
-        saman_list: samanList,
+        saman_list: samanCheck.cleanList,
       });
 
       setEditingOp(null);
@@ -200,8 +225,24 @@ export default function PenguatkuasaanTable({
               </tr>
             ) : (
               operations.map((op) => {
-                const samanList = op.saman_list || [];
-                const samanCount = samanList.length;
+                const samanList = normalizeSamanList(op.saman_list);
+                const samanSummary = summarizeSamanCategories(samanList);
+                const samanCount = samanSummary.total;
+                const breakdown = [];
+                if (samanSummary.pol170a > 0) {
+                  breakdown.push(`POL 170 A (${samanSummary.pol170a})`);
+                }
+                if (samanSummary.pol257 > 0) {
+                  breakdown.push(`POL 257 (${samanSummary.pol257})`);
+                }
+                if (samanSummary.unset > 0) {
+                  breakdown.push(
+                    `${UNSET_SAMAN_CATEGORY} (${samanSummary.unset})`
+                  );
+                }
+                const samanTooltip = samanList
+                  .map((s) => `${s.no_saman} (${s.kategori_saman})`)
+                  .join(", ");
 
                 return (
                   <tr
@@ -228,7 +269,7 @@ export default function PenguatkuasaanTable({
                       className="py-3 px-2"
                       title={
                         samanCount > 0
-                          ? samanList.join(", ")
+                          ? samanTooltip
                           : "Tiada saman direkodkan"
                       }
                     >
@@ -237,8 +278,13 @@ export default function PenguatkuasaanTable({
                           <span className="inline-block rounded-[6px] px-1.5 py-0.5 text-[11px] font-semibold bg-[#1c2b48] text-[var(--color-accent-soft)] border border-[#364d75]">
                             {samanCount} saman
                           </span>
-                          <div className="text-[11px] text-[var(--color-text-secondary)] truncate max-w-[160px] mt-0.5">
-                            {samanList.join(", ")}
+                          {breakdown.length > 0 && (
+                            <div className="text-[11px] text-[var(--color-text-primary)] mt-0.5 whitespace-nowrap">
+                              {breakdown.join(" · ")}
+                            </div>
+                          )}
+                          <div className="text-[11px] text-[var(--color-text-secondary)] truncate max-w-[170px]">
+                            {samanList.map((s) => s.no_saman).join(", ")}
                           </div>
                         </div>
                       ) : (
@@ -510,11 +556,15 @@ export default function PenguatkuasaanTable({
               <SamanBatchInput
                 key={editingOp.id}
                 value={formState.saman_rows}
-                onChange={(nextRows) =>
-                  setFormState((p) => ({ ...p, saman_rows: nextRows }))
-                }
+                onChange={(nextRows) => {
+                  setFormState((p) => ({ ...p, saman_rows: nextRows }));
+                  if (Object.keys(modalSamanErrors).length > 0) {
+                    setModalSamanErrors({});
+                  }
+                }}
                 disabled={saving}
                 fieldNumber={9}
+                validationErrors={modalSamanErrors}
               />
 
               <div className="col-span-full flex justify-end gap-2.5 pt-3 border-t border-[var(--color-table-border)] mt-2">

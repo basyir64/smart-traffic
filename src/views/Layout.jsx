@@ -22,6 +22,7 @@ import {
 import { useLocations } from "../hooks/useLocations";
 import { useSiasatan } from "../hooks/useSiasatan";
 import { usePenguatkuasaan } from "../hooks/usePenguatkuasaan";
+import { aggregatePeriodSaman } from "../utils/saman";
 
 const allTabs = [
   {
@@ -195,6 +196,7 @@ export default function Layout() {
       .sort((a, b) => b.risk - a.risk);
 
     const topLoc = scoredLocs[0];
+    const samanStats = aggregatePeriodSaman(recs, ops);
     const rows = [
       ["Perkara", "Nilai", "Nota"],
       [
@@ -205,6 +207,18 @@ export default function Layout() {
       ["Jumlah kemalangan", totalCases, "Siasatan + Penguatkuasaan"],
       ["Kemalangan maut", totalFatal, "Siasatan + Penguatkuasaan"],
       ["Jumlah kematian", totalDeaths, "Siasatan + Penguatkuasaan"],
+      ["Jumlah saman (unik)", samanStats.total, "Siasatan + Penguatkuasaan (dinyahtindih)"],
+      ["Saman POL 170 A", samanStats.pol170a, "Siasatan + Penguatkuasaan (unik)"],
+      ["Saman POL 257", samanStats.pol257, "Siasatan + Penguatkuasaan (unik)"],
+      ...(samanStats.unset > 0
+        ? [
+            [
+              "Saman Belum Ditetapkan",
+              samanStats.unset,
+              "Rekod lama (tanpa kategori)",
+            ],
+          ]
+        : []),
       ["Lokasi utama", topLoc?.name ?? "-", "Lokasi rujukan"],
       ["Skor risiko", topLoc?.risk ?? 0, "Dinamik (Siasatan + Penguatkuasaan)"],
     ];

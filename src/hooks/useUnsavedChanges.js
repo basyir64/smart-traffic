@@ -48,7 +48,16 @@ export function isFormStateDirty(initialState, currentState) {
       const arrB = Array.isArray(b) ? b : [];
       if (arrA.length !== arrB.length) return true;
       for (let i = 0; i < arrA.length; i += 1) {
-        if (String(arrA[i] ?? "") !== String(arrB[i] ?? "")) return true;
+        const elA = arrA[i];
+        const elB = arrB[i];
+        if (
+          (elA && typeof elA === "object") ||
+          (elB && typeof elB === "object")
+        ) {
+          if (isFormStateDirty(elA || {}, elB || {})) return true;
+        } else if (String(elA ?? "") !== String(elB ?? "")) {
+          return true;
+        }
       }
     } else if (typeof a === "boolean" || typeof b === "boolean") {
       if (Boolean(a) !== Boolean(b)) return true;

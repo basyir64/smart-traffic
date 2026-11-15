@@ -18,11 +18,13 @@ import {
 import { db } from "../fb_cloud_firestore";
 import { bootstrapFirestoreData } from "../services/bootstrapData";
 import { getPeriodQueryConstraints } from "./usePeriodData";
+import { coerceStoredSamanCategory } from "../utils/saman";
 
 export const SIASATAN_PAGE_SIZE = 5;
 
 export function normalizeSiasatan(raw) {
   const no_saman = raw.no_saman || "";
+  const kategori_saman = coerceStoredSamanCategory(raw.kategori_saman);
   const melibatkan_binatang = Boolean(raw.melibatkan_binatang);
   const jenis_kemalangan = raw.jenis_kemalangan || "Rosak sahaja";
   const maut = Boolean(raw.maut ?? jenis_kemalangan === "Maut");
@@ -33,6 +35,7 @@ export function normalizeSiasatan(raw) {
   return {
     id: raw.id || no_saman.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
     no_saman,
+    kategori_saman,
     no_kenderaan: raw.no_kenderaan || "",
     no_ic: Number(raw.no_ic ?? 0),
     nama: raw.nama || "",
