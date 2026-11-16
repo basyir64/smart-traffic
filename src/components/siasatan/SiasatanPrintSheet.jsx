@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import { buildSiasatanPrintModel } from "../../utils/siasatan";
+import { PRINT_FOOTER_MOTTO } from "../../utils/branding";
 
 /**
  * Renders a printer-friendly A4 white-paper HTML table for a single Siasatan record
@@ -113,7 +114,9 @@ export default function SiasatanPrintSheet({
           PROTOTAIP KONSEP · PDRM · BSPT · Data simulasi untuk semakan dalaman
           sahaja. Tiada sambungan langsung ke IPRS sebenar.
         </span>
-        <span>SMART TRAFFIC AI</span>
+        <span className="siasatan-print-footer-brand">
+          {PRINT_FOOTER_MOTTO}
+        </span>
       </div>
     </div>,
     portalRoot

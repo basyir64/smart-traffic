@@ -6,6 +6,7 @@ import {
   aggregatePeriodSaman,
 } from "../../utils/saman";
 import { formatPeriodIndicatorBM } from "../../hooks/usePeriodData";
+import { PRINT_BRAND_TITLE, PRINT_FOOTER_MOTTO } from "../../utils/branding";
 
 /**
  * Renders a printer-friendly A4 Landscape multi-page HTML table of all Penguatkuasaan
@@ -50,7 +51,7 @@ export default function PenguatkuasaanPrintSheet({ report }) {
             PDRM · BSPT · INOVASI IPD
           </div>
           <h1 className="siasatan-print-title">
-            SMART TRAFFIC AI — SENARAI REKOD PENGUATKUASAAN
+            {PRINT_BRAND_TITLE} — SENARAI REKOD PENGUATKUASAAN
           </h1>
           <div style={{ fontSize: "10px", color: "#475569", marginTop: "2px" }}>
             Laporan Lengkap Operasi Penguatkuasaan Lalu Lintas (
@@ -159,7 +160,9 @@ export default function PenguatkuasaanPrintSheet({ report }) {
           PROTOTAIP KONSEP · PDRM · BSPT · Data simulasi untuk semakan dalaman
           sahaja. Tiada sambungan langsung ke IPRS sebenar.
         </span>
-        <span>SMART TRAFFIC AI</span>
+        <span className="siasatan-print-footer-brand">
+          {PRINT_FOOTER_MOTTO}
+        </span>
       </div>
     </div>,
     portalRoot

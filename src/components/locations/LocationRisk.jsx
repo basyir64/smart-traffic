@@ -4,6 +4,7 @@ import { isHotspotLocation } from "../../utils/locations";
 import { synthesizeFromRecords } from "../../utils/locationInsight";
 import { normalizePihakTerlibatList } from "../../utils/siasatan";
 import Chip from "../shared/Chip";
+import InfoModal from "../shared/InfoModal";
 
 // In-memory cache keyed by `${locationId}:${period}:${recordsSignature}` to preserve Gemini quota
 const insightCache = new Map();
@@ -169,6 +170,7 @@ export default function LocationRisk({
     data: null,
   });
   const [loadingCacheKey, setLoadingCacheKey] = useState("");
+  const [activeInfoModal, setActiveInfoModal] = useState(null);
 
   const insight = !location
     ? null
@@ -250,41 +252,15 @@ export default function LocationRisk({
         <div className="flex items-center gap-2">
           <h2 className="text-[17px] font-bold m-0">Risiko Lokasi Pilihan</h2>
 
-          {/* Tooltip 1: Risk Calculation Formula */}
-          <div className="relative group inline-flex items-center">
-            <button
-              type="button"
-              aria-label="Formula Pengiraan Skor Risiko"
-              className="w-5 h-5 rounded-full border border-[#3d5685] bg-[#16243e] text-[#ffd58c] text-[11px] font-bold inline-flex items-center justify-center cursor-help hover:border-[var(--color-accent)] focus:outline-none"
-            >
-              i
-            </button>
-            <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150 absolute left-0 top-7 z-30 w-[320px] max-[550px]:w-[260px] p-3 rounded-xl border border-[#3d5685] bg-[#0b1528] text-[#e3ecfa] text-[11px] leading-relaxed shadow-2xl">
-              <div className="font-bold text-[#ffd58c] mb-1">
-                📐 Formula Pengiraan Skor Risiko (0–100)
-              </div>
-              <div className="text-[#b8c7de] space-y-1">
-                <div>
-                  • Jika <b>Kes = 0</b>: Skor = <b>0 / 100</b>
-                </div>
-                <div>
-                  • Jika <b>Kes &gt; 0</b>:<br />
-                  <code className="text-[#ffd58c] text-[10.5px]">
-                    clamp(0, 100, Asas + 12×Kes + 15×Maut + 5×Kematian − 4×Op)
-                  </code>
-                </div>
-                <div className="text-[10.5px] text-[#8fa5c6]">
-                  *Pemberat Asas: <b>35</b> (Blackspot) atau <b>15</b> (Pantauan)
-                </div>
-                <div className="mt-1.5 pt-1.5 border-t border-[#223454] text-[#d5e3f7]">
-                  <b>Kiraan Semasa ({periodLabel}):</b>{" "}
-                  {cases === 0
-                    ? "0 kes → 0/100"
-                    : `${baseWeight} + 12(${cases}) + 15(${fatalCount}) + 5(${deathsCount}) − 4(${opsCount}) = ${risk}/100`}
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Modal trigger 1: Risk Calculation Formula */}
+          <button
+            type="button"
+            onClick={() => setActiveInfoModal("formula")}
+            aria-label="Formula Pengiraan Skor Risiko"
+            className="w-7 h-7 min-w-[28px] min-h-[28px] rounded-full border border-[#3d5685] bg-[#16243e] text-[#ffd58c] text-xs font-bold inline-flex items-center justify-center cursor-pointer hover:border-[var(--color-accent)] transition-colors focus:outline-none"
+          >
+            i
+          </button>
         </div>
 
         <Chip>
@@ -376,36 +352,15 @@ export default function LocationRisk({
             Rumusan Faktor & Cadangan
           </span>
 
-          {/* Tooltip 2: AI Explanation for Faktor & Cadangan */}
-          <div className="relative group inline-flex items-center">
-            <button
-              type="button"
-              aria-label="Penjelasan Penjanaan Faktor dan Cadangan AI"
-              className="px-2 py-0.5 rounded-md border border-[#3d5685] bg-[#16243e] text-[#ffd58c] text-[10.5px] font-semibold inline-flex items-center gap-1 cursor-help hover:border-[var(--color-accent)] focus:outline-none"
-            >
-              <span>ⓘ Bagaimana AI Menjana?</span>
-            </button>
-            <div className="pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150 absolute right-0 bottom-7 z-30 w-[330px] max-[550px]:w-[260px] p-3 rounded-xl border border-[#3d5685] bg-[#0b1528] text-[#e3ecfa] text-[11px] leading-relaxed shadow-2xl">
-              <div className="font-bold text-[#ffd58c] mb-1">
-                🤖 Penjanaan Faktor & Cadangan (Gemini AI)
-              </div>
-              <div className="text-[#b8c7de] space-y-1">
-                <div>
-                  1. <b>Data Input:</b> Menggabungkan profil lokasi (
-                  <i>Jenis Jalan, Status Blackspot</i>) bersama rekod{" "}
-                  <b>Siasatan</b> (<i>Kesalahan, Kenderaan, Waktu, Binatang, Maut</i>) &{" "}
-                  <b>Penguatkuasaan</b> (<i>Jenis Operasi, Tangkapan, Sita</i>)
-                  bagi tempoh aktif.
-                </div>
-                <div>
-                  2. <b>Sintesis AI:</b> Dihantar atas permintaan (on-demand) ke{" "}
-                  <b>Gemini 3.5 Flash-Lite</b> (JSON mode) untuk merumuskan{" "}
-                  <b>Faktor</b> punca kemalangan & <b>Cadangan</b> taktikal
-                  BSPT/JKR.
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Modal trigger 2: AI Explanation for Faktor & Cadangan */}
+          <button
+            type="button"
+            onClick={() => setActiveInfoModal("ai")}
+            aria-label="Penjelasan Penjanaan Faktor dan Cadangan AI"
+            className="px-2.5 py-1 rounded-md border border-[#3d5685] bg-[#16243e] text-[#ffd58c] text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer hover:border-[var(--color-accent)] transition-colors focus:outline-none"
+          >
+            <span>ⓘ Bagaimana AI Menjana?</span>
+          </button>
         </div>
 
         {insight ? (
@@ -437,6 +392,65 @@ export default function LocationRisk({
           </div>
         )}
       </div>
+
+      <InfoModal
+        isOpen={activeInfoModal === "formula"}
+        icon="📐"
+        title="Formula Pengiraan Skor Risiko (0–100)"
+        subtitle={`${location.name} (${periodLabel})`}
+        onClose={() => setActiveInfoModal(null)}
+      >
+        <div className="text-[#b8c7de] space-y-2">
+          <div>
+            • Jika <b>Kes = 0</b>: Skor = <b>0 / 100</b>
+          </div>
+          <div>
+            • Jika <b>Kes &gt; 0</b>:
+            <div className="mt-1 rounded-lg border border-[#223454] bg-[#0b1528] px-3 py-2">
+              <code className="text-[#ffd58c] text-[11px] break-words">
+                clamp(0, 100, Asas + 12×Kes + 15×Maut + 5×Kematian − 4×Op)
+              </code>
+            </div>
+          </div>
+          <div className="text-[11px] text-[#8fa5c6]">
+            *Pemberat Asas: <b>35</b> (Blackspot) atau <b>15</b> (Pantauan)
+          </div>
+          <div className="pt-2 border-t border-[#223454] text-[#d5e3f7]">
+            <b>Kiraan Semasa ({periodLabel}):</b>{" "}
+            {cases === 0
+              ? "0 kes → 0/100"
+              : `${baseWeight} + 12(${cases}) + 15(${fatalCount}) + 5(${deathsCount}) − 4(${opsCount}) = ${risk}/100`}
+          </div>
+        </div>
+      </InfoModal>
+
+      <InfoModal
+        isOpen={activeInfoModal === "ai"}
+        icon="🤖"
+        title="Penjanaan Faktor & Cadangan (Gemini AI)"
+        subtitle="Analisis Lokasi atas Permintaan"
+        onClose={() => setActiveInfoModal(null)}
+      >
+        <div className="text-[#b8c7de] space-y-2">
+          <div>
+            1. <b>Data Input:</b> Menggabungkan profil lokasi (
+            <i>Jenis Jalan, Status Blackspot</i>) bersama rekod{" "}
+            <b>Siasatan</b> (<i>Kesalahan, Kenderaan, Waktu, Binatang, Maut</i>) &{" "}
+            <b>Penguatkuasaan</b> (<i>Jenis Operasi, Tangkapan, Sita</i>) bagi
+            tempoh aktif.
+          </div>
+          <div>
+            2. <b>Sintesis AI:</b> Dihantar atas permintaan (on-demand) ke{" "}
+            <b>Gemini 3.5 Flash-Lite</b> (JSON mode) untuk merumuskan{" "}
+            <b>Faktor</b> punca kemalangan & <b>Cadangan</b> taktikal BSPT/JKR.
+          </div>
+          <div className="text-[11px] text-[#8fa5c6] pt-1 border-t border-[#223454]">
+            *Jika tiada rekod dalam tempoh aktif, luar talian, atau kuota API
+            terhad, sistem memaparkan rumusan automatik berasaskan data langsung
+            (fallback).
+          </div>
+        </div>
+      </InfoModal>
     </div>
   );
 }

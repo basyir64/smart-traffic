@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../hooks/useAuth";
 import { dataSourceInfo } from "../fb_cloud_firestore";
 import { seedUsers } from "../data/seedUsers";
+import BrandBadge from "../components/shared/BrandBadge";
 
 export default function Login() {
   const { t } = useTranslation();
@@ -49,9 +50,7 @@ export default function Login() {
     <div className="flex items-center justify-center min-h-[60vh] px-4 py-8">
       <div className="w-full max-w-md border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl p-7 shadow-2xl backdrop-blur-md">
         <div className="text-center mb-6">
-          <div className="inline-block bg-linear-to-br from-[var(--color-accent-light)] to-[var(--color-accent-dark)] text-[#0c1830] font-black px-4 py-2.5 rounded-2xl text-xl select-none mb-3">
-            AI
-          </div>
+          <BrandBadge className="mb-3" />
           <h2 className="text-xl font-bold tracking-tight">
             {t("auth.loginTitle", "Log Masuk Pegawai")}
           </h2>

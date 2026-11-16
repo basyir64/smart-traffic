@@ -4,6 +4,7 @@
  */
 import { coerceStoredSamanCategory } from "./saman.js";
 import { CUSTOM_LOCATION_ID } from "./locations.js";
+import { PRINT_BRAND_TITLE } from "./branding.js";
 
 export const VEHICLE_CATEGORIES = [
   "Motosikal",
@@ -439,7 +440,7 @@ export function buildSiasatanPrintModel(
     documentId: record?.id || "-",
     printedAt: printedAt || "-",
     eyebrow: "PDRM · BSPT · INOVASI IPD",
-    title: "SMART TRAFFIC AI — REKOD SIASATAN KEMALANGAN",
+    title: `${PRINT_BRAND_TITLE} — REKOD SIASATAN KEMALANGAN`,
     bannerText: "● DATA SIMULASI — BUKAN IPRS SEBENAR",
     fieldsTop: [
       { label: "1. No. Saman", value: record?.no_saman || "-" },

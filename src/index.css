@@ -100,6 +100,20 @@ body {
   min-height: 100vh;
 }
 
+@layer base {
+  input[type="date"],
+  input[type="time"] {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    appearance: none;
+    -webkit-appearance: none;
+    color-scheme: dark;
+  }
+}
+
 #siasatan-print-root,
 #siasatan-agg-print-root,
 #penguatkuasaan-print-root {
@@ -383,13 +397,22 @@ body {
   }
 
   .siasatan-print-footer {
-    margin-top: 10px;
-    padding-top: 6px;
+    margin-top: 8px;
+    padding-top: 5px;
     border-top: 1px solid #94a3b8;
-    font-size: 9.5px;
+    font-size: 8.2px;
+    line-height: 1.25;
     color: #475569;
     display: flex;
     justify-content: space-between;
-    gap: 8px;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .siasatan-print-footer-brand {
+    text-align: right;
+    flex-shrink: 0;
+    font-weight: 600;
+    color: #334155;
   }
 }

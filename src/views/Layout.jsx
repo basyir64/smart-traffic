@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { usePeriod } from "../hooks/usePeriod";
 import { useAuth } from "../hooks/useAuth";
 import { useUnsavedChanges } from "../hooks/useUnsavedChanges";
+import BrandBadge from "../components/shared/BrandBadge";
 import UnsavedChangesModal from "../components/shared/UnsavedChangesModal";
 import { dataSourceInfo } from "../fb_cloud_firestore";
 import { bootstrapFirestoreData } from "../services/bootstrapData";
@@ -233,7 +234,7 @@ export default function Layout() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "SMART_TRAFFIC_AI_demo.csv";
+    a.download = "SATRIA_PerTH_AI_demo.csv";
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   };
@@ -241,24 +242,25 @@ export default function Layout() {
   return (
     <div className="max-w-[1500px] mx-auto px-6 py-6 max-[550px]:p-3.5">
       {/* ── Top Bar ── */}
-      <div className="flex justify-between items-center gap-5 flex-wrap">
-        <div className="flex items-center gap-4">
-          <div className="bg-linear-to-br from-[var(--color-accent-light)] to-[var(--color-accent-dark)] text-[#0c1830] font-black px-4 py-3.5 rounded-2xl text-xl select-none">
-            AI
-          </div>
-          <div>
-            <div className="text-[11px] tracking-[2px] text-[var(--color-accent-text)] font-bold">
+      <div className="flex justify-between items-start lg:items-center gap-4 max-[550px]:gap-3 flex-wrap">
+        <div className="flex items-center gap-3.5 max-[550px]:gap-3 min-w-0 max-w-full">
+          <BrandBadge />
+          <div className="min-w-0">
+            <div className="text-[11px] max-[550px]:text-[10px] tracking-[1.8px] max-[550px]:tracking-[1.1px] text-[var(--color-accent-text)] font-bold leading-snug">
               {t("brand.eyebrow")}
             </div>
-            <h1 className="text-2xl max-[550px]:text-xl font-bold my-1">
+            <h1 className="text-2xl max-[768px]:text-xl font-bold my-0.5 leading-tight">
               {t("brand.title")}
             </h1>
-            <div className="text-[var(--color-text-secondary)] text-xs">
+            <div className="text-[var(--color-text-secondary)] text-xs leading-snug">
               {t("brand.subtitle")}
+            </div>
+            <div className="text-[11.5px] italic text-[var(--color-accent-soft)] mt-0.5 leading-snug">
+              {t("brand.tagline")}
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap max-[1120px]:w-full">
           {dataSourceInfo.isEmulator && (
             <div
               className="text-[#93c5fd] border border-[#1e40af] bg-[#0f2447] rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-wide"
@@ -267,19 +269,19 @@ export default function Layout() {
               EMULATOR · {dataSourceInfo.host}
             </div>
           )}
-          <div className="text-[var(--color-demo-text)] border border-[var(--color-demo-border)] bg-[var(--color-demo-bg)] rounded-full px-3.5 py-2 text-xs">
+          <div className="text-[var(--color-demo-text)] border border-[var(--color-demo-border)] bg-[var(--color-demo-bg)] rounded-full px-3 py-1.5 text-[11.5px]">
             {t("brand.demo")}
           </div>
           {!isAuthenticated ? (
             <Link
               to="/login"
-              className="bg-[var(--color-accent)] text-[#0b1629] font-bold px-3.5 py-2 rounded-full text-xs hover:brightness-110 transition-all flex items-center gap-1.5 shadow-sm"
+              className="bg-[var(--color-accent)] text-[#0b1629] font-bold px-3.5 py-1.5 rounded-full text-xs hover:brightness-110 transition-all flex items-center gap-1.5 shadow-sm"
             >
               <span>🔑</span>
               <span>{t("auth.loginBtn", "Log Masuk")}</span>
             </Link>
           ) : (
-            <div className="flex items-center gap-2 bg-[#172a48] border border-[#344967] rounded-full px-3.5 py-1.5 text-xs">
+            <div className="flex items-center gap-2 bg-[#172a48] border border-[#344967] rounded-full px-3 py-1.5 text-xs">
               <span className="text-[var(--color-text-primary)] font-medium">
                 {user.name} ·{" "}
                 <span className="text-[var(--color-accent-soft)] font-semibold">
@@ -318,9 +320,9 @@ export default function Layout() {
             </NavLink>
           ))}
 
-          {/* Period selector + CSV export (Dashboard Utama only) — pushed right */}
+          {/* Period selector + CSV export (Dashboard Utama only) — pushed right on wide screens */}
           {isDashboard && (
-            <div className="ml-auto max-[980px]:ml-0 flex items-center gap-2 flex-wrap">
+            <div className="ml-auto max-[1120px]:ml-0 max-[1120px]:basis-full flex items-center gap-2 flex-wrap">
               <div className="inline-flex items-center gap-1.5 border border-[var(--color-chip-border)] bg-[var(--color-chip-bg)] text-[var(--color-chip-text)] px-3 py-2 rounded-[10px] text-xs font-semibold">
                 <span>📅 Tempoh Data:</span>
                 <span className="text-[var(--color-accent)]">

@@ -1169,6 +1169,113 @@ All Phase 1 and Phase 2 design, schema, UX, and print layout decisions above wer
 
 ---
 
+### UAT Round 5 — Development Phases *(Implemented — Pending UAT Round 5 Verification)*
+
+> [!NOTE]
+> **Fifth Round of User Acceptance Testing (UAT 5) Scope — Implemented (`2026-11-16`)**:
+> Tracks the official rebranding (`SATRIA PerTH AI`), eyebrow placement of `Prototaip Interaktif`, system subtitle expansion, agency motto integration, medium-screen header/nav responsiveness, date/time input overflow fixes, and touch-friendly Dashboard info modals — **strictly excluding** URL/routing base paths, internal auth domains, `role_matrix.md`, and Firestore collection schemas.
+> Automated verification (`eslint .` = 0 errors/0 warnings, `vite build` exit 0) completed; interactive browser/touch/print verification pending UAT sign-off.
+
+#### UAT 5 · Phase 1 — Rebranding (`SATRIA PerTH AI`), Eyebrow/Subtitle/Motto & Medium-Screen Layout
+
+##### 1. Confirmed Copy & Asset Mapping
+| Element | Current Text | Target Text *(Confirmed)* | Surface Notes |
+|---|---|---|---|
+| **Brand Eyebrow** (`src/i18n.js`) | `PDRM · BSPT · INOVASI IPD` | **`PDRM · BSPT · INOVASI IPD · PROTOTAIP INTERAKTIF`** | Moves `Prototaip Interaktif` into the compact uppercase eyebrow (`tracking-[2px]`) so `brand.subtitle` fits cleanly on one line at medium widths. *(Print sheet headers may retain `PDRM · BSPT · INOVASI IPD`)* |
+| **Brand Title** *(every visible UI & print occurrence)* | `SMART TRAFFIC AI` | **`SATRIA PerTH AI`** | Browser `<title>`, Top Bar `<h1>`, and all 3 A4 print sheet headers & footers. Preserve exact mixed casing **`PerTH`** even in uppercase print titles. |
+| **System Subtitle** (`src/i18n.js`) | `Command & Accident Prevention Dashboard · Prototaip Interaktif` | **`Sistem Analitik Trafik, Risiko dan Intervensi Automatik`** | Standalone line directly below `<h1>SATRIA PerTH AI</h1>`, expanding the **SATRIA** acronym. |
+| **Agency Tagline / Motto** (`src/i18n.js`, Print Footers) | *(none)* | **`"Data Tepat, Operasi Berfokus, Nyawa Diselamatkan"`** | Rendered literally enclosed in double quotes (`"..."`), placed beneath `brand.subtitle` in `Layout.jsx` (`text-[11.5px] italic text-[var(--color-accent-soft)]`) and compactly inside all 3 A4 print footers. |
+| **Square Brand Emblem** (`Layout.jsx`, `Login.jsx`) | `AI` | **`SATRIA`** | Centered inside a balanced fixed square (`w-14 h-14 max-[550px]:w-12 max-[550px]:h-12`) with scaled-down bold typography (`text-[11px] max-[550px]:text-[10px] tracking-[0.06em]`) so all 6 letters stay crisp inside a square box. |
+| **CSV Download Filename** (`Layout.jsx`) | `SMART_TRAFFIC_AI_demo.csv` | **`SATRIA_PerTH_AI_demo.csv`** | Dashboard `↓ Eksport CSV` download attribute. |
+| **Access Matrix (`role_matrix.md`)** | `SMART TRAFFIC AI` | *(Leave untouched)* | Excluded per owner confirmation. |
+
+##### 2. Implementation Scope & Medium-Screen Responsive Design
+1. **Browser Tab Title (`index.html`)**: Update `<title>SATRIA PerTH AI</title>`.
+2. **Localization Strings (`src/i18n.js`)**:
+   - `"brand.eyebrow"`: `"PDRM · BSPT · INOVASI IPD · PROTOTAIP INTERAKTIF"`
+   - `"brand.title"`: `"SATRIA PerTH AI"`
+   - `"brand.subtitle"`: `"Sistem Analitik Trafik, Risiko dan Intervensi Automatik"`
+   - `"brand.tagline"`: `"\"Data Tepat, Operasi Berfokus, Nyawa Diselamatkan\""`
+3. **App Shell Top Bar, Nav Toolbar & CSV Export (`src/views/Layout.jsx`) + Login Card Emblem (`src/views/Login.jsx`)**:
+   - Extract or align the fixed-square `SATRIA` emblem (`bg-linear-to-br from-[var(--color-accent-light)] to-[var(--color-accent-dark)] text-[#0c1830] font-black w-14 h-14 max-[550px]:w-12 max-[550px]:h-12 rounded-2xl inline-flex items-center justify-center shrink-0 text-[11px] max-[550px]:text-[10px] tracking-[0.06em] leading-none select-none`) in both `Layout.jsx` and `Login.jsx`.
+   - Render `{t("brand.tagline")}` beneath `{t("brand.subtitle")}` inside a `min-w-0` text column (`text-[11.5px] italic text-[var(--color-accent-soft)] mt-0.5 leading-snug`).
+   - Improve medium-screen responsiveness (`768px–1279px`):
+     - Use `min-w-0` + clean responsive wrapping on Top Bar (`flex justify-between items-start lg:items-center gap-4 flex-wrap`, compacting pill spacing/wrapping so `SATRIA` stack and right-side status/auth pills sit cleanly without cramping `Sistem Analitik Trafik, Risiko dan Intervensi Automatik`).
+     - Update the Dashboard toolbar container inside `<nav>` (around `isDashboard` controls) from `max-[980px]:ml-0` to wrap cleanly around **`< 1120px`** (`ml-auto max-[1120px]:ml-0 max-[1120px]:basis-full`, or equivalent responsive utility) so when all 4 Admin tabs are displayed alongside `📅 Tempoh Data`, `<select>`, and `↓ Eksport CSV`, controls never crowd at `~1024px`.
+   - Update `handleExportCsv` download filename to `"SATRIA_PerTH_AI_demo.csv"`.
+4. **All Three White-Paper A4 PDF Print Templates**:
+   - **Single-Record Siasatan (`src/utils/siasatan.js` & `src/components/siasatan/SiasatanPrintSheet.jsx`)**:
+     - Header title: `"SATRIA PerTH AI — REKOD SIASATAN KEMALANGAN"`
+     - Footer right `<span>`: `SATRIA PerTH AI · "Data Tepat, Operasi Berfokus, Nyawa Diselamatkan"`
+   - **`9 Elemen Data Kemalangan` (`src/components/siasatan/SiasatanAggPrintSheet.jsx`)**:
+     - Header title: `"SATRIA PerTH AI — LAPORAN 9 ELEMEN DATA KEMALANGAN"`
+     - Footer right `<span>`: `SATRIA PerTH AI · "Data Tepat, Operasi Berfokus, Nyawa Diselamatkan"`
+     - *1-Page Fit Guard*: Tune `.siasatan-print-footer` spacing/font (`~8.5px–9px`, flex gap / `text-right`) in `src/index.css` if needed so adding the motto to the footer does **not** push Element 9 onto a second page on A4 Portrait.
+   - **`Senarai Rekod Penguatkuasaan` (`src/components/penguatkuasaan/PenguatkuasaanPrintSheet.jsx`)**:
+     - Header title: `"SATRIA PerTH AI — SENARAI REKOD PENGUATKUASAAN"`
+     - Footer right `<span>`: `SATRIA PerTH AI · "Data Tepat, Operasi Berfokus, Nyawa Diselamatkan"`
+
+##### 3. Explicitly Excluded / Preserved Boundaries *(Do NOT Modify)*
+- `/smart-traffic` URL basename & route matching (`vite.config.js`, `src/index.jsx`, `public/404.html`, `Layout.jsx`).
+- `@smarttraffic.internal` synthetic auth emails (`auth-context.jsx`, `seedUsers.js`, `scripts/onboard-user.mjs`), Firebase project ID `smart-traffic-93b67`, and all Firestore collection names/schemas (**0 schema/collection dependencies**).
+- Internal DOM ID `#smarttraffic-gmaps-script` (`GoogleHotspotMap.jsx`), `role_matrix.md`, `SMART_TRAFFIC_AI_Dashboard_Prototype.html`, and legacy UAT 1–4 docs.
+
+---
+
+#### UAT 5 · Phase 2 — Date/Time Input Overflow Fix & Touch-Friendly Dashboard Info Modals
+
+##### 4. Fix Right-Edge Overflow on All `<input type="date">` & `<input type="time">` Fields
+- **Affected Files (10 controls across 4 components — Forms & Edit Modals)**:
+  - `src/components/siasatan/SiasatanForm.jsx` (`6. Tarikh Kemalangan`, `7. Waktu Kejadian (HH:MM)`)
+  - `src/components/siasatan/SiasatanTable.jsx` Edit Modal (`6. Tarikh Kemalangan`, `7. Waktu Kejadian (HH:MM)`)
+  - `src/components/penguatkuasaan/PenguatkuasaanForm.jsx` (`1. Tarikh`, `7. Jam Mula (HH:MM)`, `8. Jam Akhir (HH:MM)`)
+  - `src/components/penguatkuasaan/PenguatkuasaanTable.jsx` Edit Modal (`1. Tarikh`, `7. Jam Mula (HH:MM)`, `8. Jam Akhir (HH:MM)`)
+- **CSS & Grid Containment Fix**:
+  - In `src/index.css` (`@layer base` or clean global element rules), constrain native date/time pickers cleanly across WebKit/Chromium/mobile browsers:
+    ```css
+    input[type="date"],
+    input[type="time"] {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      box-sizing: border-box;
+      appearance: none;
+      -webkit-appearance: none;
+      color-scheme: dark;
+    }
+    ```
+  - Add `min-w-0` on each `<div className="flex flex-col gap-1.5 min-w-0">` wrapper holding `type="date"` / `type="time"` (and sibling 2-column grid field wrappers cleanly) across `SiasatanForm.jsx`, `SiasatanTable.jsx`, `PenguatkuasaanForm.jsx`, and `PenguatkuasaanTable.jsx` so grid tracks never expand past modal/card padding.
+
+##### 5. Replace Touch-Unfriendly Hover Tooltips with Click/Tap Buttons + Accessible Info Modals
+- **Scope**: Convert only the **2 hover popovers in `LocationRisk.jsx`** (`TrendBarChart.jsx` bar `title="..."` attributes remain untouched per owner confirmation).
+- **Uniform Interaction on Desktop & Touch (Confirmed)**:
+  - Remove floating `group-hover` / `group-focus-within` popover divs completely so both desktop and mobile use explicit **click/tap → Modal**.
+  - Enlarge the Risk Formula `i` icon button from `w-5 h-5` (`20px`) to **`w-7 h-7`** (`28px × 28px`, `min-w-[28px] min-h-[28px]`, `cursor-pointer`, replacing `cursor-help` with `cursor-pointer`) for comfortable thumb tapping; keep **`ⓘ Bagaimana AI Menjana?`** as a clean tappable pill button (`py-1 px-2.5 cursor-pointer`).
+- **Reusable Accessible Modal (`src/components/shared/InfoModal.jsx`)**:
+  - Track `activeInfoModal` (`null | "formula" | "ai"`) inside `LocationRisk.jsx`.
+  - Render a dark-glassmorphism modal matching `UnsavedChangesModal.jsx` / `LokasiTable.jsx` (`fixed inset-0 z-[70] bg-black/75 backdrop-blur-xs`, `bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl`, `aria-modal="true"`, `aria-labelledby`, `Escape` key handler, backdrop click-to-close, and top-right/bottom `✕ Tutup` button).
+  - **Modal 1 (`"formula"`)**: `📐 Formula Pengiraan Skor Risiko (0–100)` — preserves exact formula copy, base weight note (`35` Blackspot / `15` Pantauan), and live dynamic `Kiraan Semasa (${periodLabel})` calculation for the currently selected location.
+  - **Modal 2 (`"ai"`)**: `🤖 Penjanaan Faktor & Cadangan (Gemini AI)` — preserves Step 1 (`Data Input`) and Step 2 (`Sintesis AI`, noting `Gemini 3.5 Flash-Lite` JSON mode), and explains live data fallback when offline/quota-limited.
+
+##### 6. Verification Checklist *(for Implementing Agent — UAT Round 5)*
+- Confirm zero new dependencies in `package.json`.
+- Run `npm run lint` (`eslint .`) → **0 errors, 0 warnings** and `npm run build` (`vite build`) → clean exit `0`.
+- Visual & functional verification across viewports (`>=1280px` desktop, `768px–1120px` tablet/medium, `375px` mobile/touch emulation):
+  - **Branding**: Browser `<title>` shows `SATRIA PerTH AI`; Top Bar shows square `SATRIA` emblem, `PDRM · BSPT · INOVASI IPD · PROTOTAIP INTERAKTIF`, `SATRIA PerTH AI`, `Sistem Analitik Trafik, Risiko dan Intervensi Automatik`, and `"Data Tepat, Operasi Berfokus, Nyawa Diselamatkan"`; Login card shows square `SATRIA` emblem; Dashboard `↓ Eksport CSV` downloads `SATRIA_PerTH_AI_demo.csv`; `9 Elemen`, `Rekod Siasatan`, and `Senarai Rekod Penguatkuasaan` A4 printouts show exact `SATRIA PerTH AI` titles & compact footer motto with `9 Elemen` still fitting on **1 A4 page**.
+  - **Preserved**: `/smart-traffic/*` URLs, `@smarttraffic.internal` login/onboarding, and `role_matrix.md` remain untouched.
+  - **Date/Time Inputs**: All 10 `<input type="date">` / `<input type="time">` controls align flush inside cards and edit modals (`SiasatanForm`, `SiasatanTable`, `PenguatkuasaanForm`, `PenguatkuasaanTable`) with zero horizontal/right-edge overflow on mobile (`375px`) and WebKit/touch emulation.
+  - **Dashboard Info Modals**: Clicking/tapping `i` (`w-7 h-7`) and `ⓘ Bagaimana AI Menjana?` opens crisp modals with live risk math / AI explanation and closes cleanly on `✕ Tutup`, backdrop tap, or `Escape` without horizontal clipping or stale hover popovers.
+
+##### 7. All Owner Clarifications Resolved
+1. `Prototaip Interaktif` moved into eyebrow (`PDRM · BSPT · INOVASI IPD · PROTOTAIP INTERAKTIF`), leaving `Sistem Analitik Trafik, Risiko dan Intervensi Automatik` cleanly on its own line (`brand.subtitle`), with `Layout.jsx` Nav/Toolbar wrap adjusted around `< 1120px` for medium screens.
+2. Motto `"Data Tepat, Operasi Berfokus, Nyawa Diselamatkan"` shown beneath subtitle in `Layout.jsx` and compactly in all 3 A4 print footers.
+3. Square emblem updated from `AI` → `SATRIA` with smaller centered font; exact mixed casing `SATRIA PerTH AI` kept everywhere; CSV renamed to `SATRIA_PerTH_AI_demo.csv`; `role_matrix.md` left untouched.
+4. Date/time right-edge overflow scoped strictly to `<input type="date">` and `<input type="time">` fields & modals.
+5. Dashboard touch info modals scoped strictly to the 2 `LocationRisk.jsx` info buttons (`i` enlarged to `w-7 h-7` + `ⓘ Bagaimana AI Menjana?`, click/tap-only → Modal on both desktop & touch; `TrendBarChart.jsx` untouched).
+
+---
+
 ## 10. Key Constraints
 
 - **Simulation data only** — all numbers are fake; the banner "DATA SIMULASI — BUKAN IPRS SEBENAR" must always be visible

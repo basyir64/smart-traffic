@@ -473,7 +473,7 @@ export default function PenguatkuasaanTable({
               className="grid grid-cols-2 max-[550px]:grid-cols-1 gap-3.5"
             >
               {/* 1. Tarikh */}
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 min-w-0">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
                   1. Tarikh
                 </label>
@@ -484,7 +484,7 @@ export default function PenguatkuasaanTable({
                     setFormState((p) => ({ ...p, tarikh: e.target.value }))
                   }
                   required
-                  className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+                  className="w-full min-w-0 max-w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
                 />
               </div>
 
@@ -627,7 +627,7 @@ export default function PenguatkuasaanTable({
               </div>
 
               {/* 7. Jam Mula */}
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 min-w-0">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
                   7. Jam Mula (HH:MM)
                 </label>
@@ -638,12 +638,12 @@ export default function PenguatkuasaanTable({
                     setFormState((p) => ({ ...p, jam_mula: e.target.value }))
                   }
                   required
-                  className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+                  className="w-full min-w-0 max-w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
                 />
               </div>
 
               {/* 8. Jam Akhir */}
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 min-w-0">
                 <label className="text-xs text-[var(--color-text-label)] font-semibold">
                   8. Jam Akhir (HH:MM)
                 </label>
@@ -654,7 +654,7 @@ export default function PenguatkuasaanTable({
                     setFormState((p) => ({ ...p, jam_akhir: e.target.value }))
                   }
                   required
-                  className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+                  className="w-full min-w-0 max-w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
                 />
               </div>
 

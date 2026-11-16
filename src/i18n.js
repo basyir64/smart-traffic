@@ -5,9 +5,11 @@ const resources = {
   bm: {
     translation: {
       // Brand
-      "brand.eyebrow": "PDRM · BSPT · INOVASI IPD",
-      "brand.title": "SMART TRAFFIC AI",
-      "brand.subtitle": "Command & Accident Prevention Dashboard · Prototaip Interaktif",
+      "brand.eyebrow": "PDRM · BSPT · INOVASI IPD · PROTOTAIP INTERAKTIF",
+      "brand.title": "SATRIA PerTH AI",
+      "brand.subtitle":
+        "Sistem Analitik Trafik, Risiko dan Intervensi Automatik",
+      "brand.tagline": '"Data Tepat, Operasi Berfokus, Nyawa Diselamatkan"',
       "brand.demo": "● DATA SIMULASI — BUKAN IPRS SEBENAR",
 
       // Tabs

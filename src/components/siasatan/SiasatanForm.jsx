@@ -381,7 +381,7 @@ export default function SiasatanForm({
         />
 
         {/* 6. Tarikh Kemalangan */}
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5 min-w-0">
           <label
             htmlFor="tarikhKemalangan"
             className="text-xs text-[var(--color-text-label)] font-semibold"
@@ -394,12 +394,12 @@ export default function SiasatanForm({
             value={tarikhKemalangan}
             onChange={(e) => setTarikhKemalangan(e.target.value)}
             required
-            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+            className="w-full min-w-0 max-w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
           />
         </div>
 
         {/* 7. Waktu Kejadian (HH:MM) */}
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5 min-w-0">
           <label
             htmlFor="waktuKejadian"
             className="text-xs text-[var(--color-text-label)] font-semibold"
@@ -412,7 +412,7 @@ export default function SiasatanForm({
             value={waktuKejadian}
             onChange={(e) => setWaktuKejadian(e.target.value)}
             required
-            className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
+            className="w-full min-w-0 max-w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
           />
         </div>
 

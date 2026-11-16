@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { createPortal } from "react-dom";
 import { COLLAPSIBLE_NINE_ELEMENTS } from "../../utils/siasatan";
+import { PRINT_BRAND_TITLE, PRINT_FOOTER_MOTTO } from "../../utils/branding";
 import { formatPeriodIndicatorBM } from "../../hooks/usePeriodData";
 
 /**
@@ -75,7 +76,7 @@ export default function SiasatanAggPrintSheet({ report }) {
             PDRM · BSPT · INOVASI IPD
           </div>
           <h1 className="siasatan-print-title">
-            SMART TRAFFIC AI — LAPORAN 9 ELEMEN DATA KEMALANGAN
+            {PRINT_BRAND_TITLE} — LAPORAN 9 ELEMEN DATA KEMALANGAN
           </h1>
           <div style={{ fontSize: "9.5px", color: "#475569", marginTop: "2px" }}>
             Ringkasan Agregat Kemalangan Jalan Raya (Berdasarkan Tarikh
@@ -127,7 +128,9 @@ export default function SiasatanAggPrintSheet({ report }) {
           PROTOTAIP KONSEP · PDRM · BSPT · Data simulasi untuk semakan dalaman
           sahaja. Tiada sambungan langsung ke IPRS sebenar.
         </span>
-        <span>SMART TRAFFIC AI</span>
+        <span className="siasatan-print-footer-brand">
+          {PRINT_FOOTER_MOTTO}
+        </span>
       </div>
     </div>,
     portalRoot
