@@ -8,6 +8,7 @@ import { useSelectedLocation } from "../hooks/useSelectedLocation";
 import MetricCard from "../components/metrics/MetricCard";
 import TrendBarChart from "../components/charts/TrendBarChart";
 import {
+  IN_INVESTIGATION_SAMAN_CATEGORY,
   aggregatePeriodSaman,
   getTrendBucketCount,
   buildWeeklyDayKeys,
@@ -217,10 +218,17 @@ export default function App() {
   );
 
   const samanSubtitle = useMemo(() => {
-    const base = `POL 170 A: ${samanSummary.pol170a} · POL 257: ${samanSummary.pol257}`;
-    return samanSummary.unset > 0
-      ? `${base} · Lain: ${samanSummary.unset}`
-      : base;
+    const parts = [
+      `POL 170 A: ${samanSummary.pol170a}`,
+      `POL 257: ${samanSummary.pol257}`,
+    ];
+    if (samanSummary.dalamSiasatan > 0) {
+      parts.push(`Dalam Siasatan: ${samanSummary.dalamSiasatan}`);
+    }
+    if (samanSummary.unset > 0) {
+      parts.push(`Lain: ${samanSummary.unset}`);
+    }
+    return parts.join(" · ");
   }, [samanSummary]);
 
   const samanTrend = useMemo(() => {
@@ -229,6 +237,7 @@ export default function App() {
     const buckets = Array.from({ length: count }, () => ({
       pol170a: 0,
       pol257: 0,
+      dalamSiasatan: 0,
       unset: 0,
       total: 0,
     }));
@@ -244,6 +253,8 @@ export default function App() {
       bucket.total += 1;
       if (item.kategori_saman === "POL 170 A") bucket.pol170a += 1;
       else if (item.kategori_saman === "POL 257") bucket.pol257 += 1;
+      else if (item.kategori_saman === IN_INVESTIGATION_SAMAN_CATEGORY)
+        bucket.dalamSiasatan += 1;
       else bucket.unset += 1;
     });
 

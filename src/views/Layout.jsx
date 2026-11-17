@@ -208,9 +208,18 @@ export default function Layout() {
       ["Jumlah kemalangan", totalCases, "Siasatan + Penguatkuasaan"],
       ["Kemalangan maut", totalFatal, "Siasatan + Penguatkuasaan"],
       ["Jumlah kematian", totalDeaths, "Siasatan + Penguatkuasaan"],
-      ["Jumlah saman (unik)", samanStats.total, "Siasatan + Penguatkuasaan (dinyahtindih)"],
+      ["Jumlah saman", samanStats.total, "Siasatan + Penguatkuasaan (unik / tanpa no.)"],
       ["Saman POL 170 A", samanStats.pol170a, "Siasatan + Penguatkuasaan (unik)"],
       ["Saman POL 257", samanStats.pol257, "Siasatan + Penguatkuasaan (unik)"],
+      ...(samanStats.dalamSiasatan > 0
+        ? [
+            [
+              "Saman Dalam Siasatan",
+              samanStats.dalamSiasatan,
+              "Siasatan + Penguatkuasaan (unik / tanpa no.)",
+            ],
+          ]
+        : []),
       ...(samanStats.unset > 0
         ? [
             [

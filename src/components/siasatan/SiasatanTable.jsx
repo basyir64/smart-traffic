@@ -10,6 +10,7 @@ import {
 } from "../../hooks/useUnsavedChanges";
 import {
   SAMAN_CATEGORIES,
+  IN_INVESTIGATION_SAMAN_CATEGORY,
   UNSET_SAMAN_CATEGORY,
   coerceStoredSamanCategory,
   normalizeSamanCategory,
@@ -273,12 +274,6 @@ export default function SiasatanTable({
     e.preventDefault();
     if (!editingRecord || !formState || !onUpdateRecord) return;
 
-    const savedSaman = (formState.no_saman || "").trim().toUpperCase();
-    if (!savedSaman) {
-      setModalError("Sila masukkan No. Saman yang sah.");
-      return;
-    }
-
     const normalizedKategori = normalizeSamanCategory(formState.kategori_saman);
     const keepLegacyUnset =
       initialFormState?.kategori_saman === UNSET_SAMAN_CATEGORY &&
@@ -286,7 +281,18 @@ export default function SiasatanTable({
 
     if (!normalizedKategori && !keepLegacyUnset) {
       setModalError(
-        "Sila pilih Kategori Saman yang sah (POL 170 A atau POL 257)."
+        "Sila pilih Kategori Saman yang sah (POL 170 A, POL 257, atau Dalam Siasatan)."
+      );
+      return;
+    }
+
+    const savedSaman = (formState.no_saman || "").trim().toUpperCase();
+    if (
+      !savedSaman &&
+      normalizedKategori !== IN_INVESTIGATION_SAMAN_CATEGORY
+    ) {
+      setModalError(
+        'Sila masukkan No. Saman yang sah (atau pilih "Dalam Siasatan").'
       );
       return;
     }
@@ -435,7 +441,9 @@ export default function SiasatanTable({
                     ? "bg-sky-500/15 text-sky-300 border-sky-500/35"
                     : kat === "POL 257"
                       ? "bg-violet-500/15 text-violet-300 border-violet-500/35"
-                      : "bg-slate-500/15 text-[var(--color-text-secondary)] border-[var(--color-border-light)]";
+                      : kat === IN_INVESTIGATION_SAMAN_CATEGORY
+                        ? "bg-amber-500/15 text-amber-300 border-amber-500/35"
+                        : "bg-slate-500/15 text-[var(--color-text-secondary)] border-[var(--color-border-light)]";
 
                 const parties = normalizePihakTerlibatList(r);
                 const firstParty = parties[0] || {};
@@ -459,7 +467,9 @@ export default function SiasatanTable({
                         : "hover:bg-[#192b49]/35"
                     }`}
                   >
-                    <td className="py-3 px-2 font-semibold">{r.no_saman}</td>
+                    <td className="py-3 px-2 font-semibold">
+                      {r.no_saman || "-"}
+                    </td>
                     <td className="py-3 px-2 whitespace-nowrap">
                       <span
                         className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold border ${badgeClass}`}
@@ -637,9 +647,17 @@ export default function SiasatanTable({
             >
               {/* 1. No. Saman */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-[var(--color-text-label)] font-semibold">
-                  1. No. Saman
-                </label>
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs text-[var(--color-text-label)] font-semibold">
+                    1. No. Saman
+                  </label>
+                  {normalizeSamanCategory(formState.kategori_saman) ===
+                    IN_INVESTIGATION_SAMAN_CATEGORY && (
+                    <span className="text-[10.5px] font-semibold text-amber-300">
+                      Pilihan
+                    </span>
+                  )}
+                </div>
                 <input
                   type="text"
                   value={formState.no_saman}
@@ -649,7 +667,16 @@ export default function SiasatanTable({
                       no_saman: e.target.value.toUpperCase(),
                     }))
                   }
-                  required
+                  placeholder={
+                    normalizeSamanCategory(formState.kategori_saman) ===
+                    IN_INVESTIGATION_SAMAN_CATEGORY
+                      ? "Pilihan (jika Dalam Siasatan)"
+                      : "Cth: SMN-2026-00142"
+                  }
+                  required={
+                    normalizeSamanCategory(formState.kategori_saman) !==
+                    IN_INVESTIGATION_SAMAN_CATEGORY
+                  }
                   className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2 rounded-[9px] text-[13px] focus:outline-none focus:border-[var(--color-accent)]"
                 />
               </div>

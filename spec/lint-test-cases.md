@@ -2,7 +2,7 @@
 
 > **Document Purpose**: Reference audit and regression test plan for clearing the **24 pre-existing ESLint problems (23 errors, 1 warning)** documented under *Section 9 · UAT Round 4 · Deferred Maintenance* in [`spec/SPEC.md`](file:///c:/Users/basyir/smarttraffic/spec/SPEC.md#L1162-L1168).
 > **Scope Rule**: All UAT Round 4 created/modified files already pass targeted ESLint with **0 errors / 0 warnings**. This document tracks the **14 files** cleaned up outside UAT Round 4 so interactive regression checks can be run cleanly.
-> **Cleanup Status (`2026-11-15`)**: Applied fixes across all 14 files (Category A legacy hooks cleaned surgically in place without deletion). Automated checks `TC-LINT-01`–`TC-LINT-03` and manual Suites 2–5 (`TC-LINT-04`–`TC-LINT-10`) are **`✅ VERIFIED`** (**0 ESLint errors, 0 warnings**; Vite build succeeded; `LocationRisk.jsx` updated for `AQ.` keys + `gemini-3.5-flash-lite` + 15s timeout). Suites 6–7 (`TC-LINT-11`–`TC-LINT-15`) remain pending later UAT verification.
+> **Cleanup Status (`2026-11-17`)**: Applied fixes across all 14 files (Category A legacy hooks cleaned surgically in place without deletion). Automated checks `TC-LINT-01`–`TC-LINT-03` and manual cases `TC-LINT-04`–`TC-LINT-13` are **`✅ VERIFIED`** (**0 ESLint errors, 0 warnings**; Vite build succeeded; `LocationRisk.jsx` updated for `AQ.` keys + `gemini-3.5-flash-lite` + 15s timeout). Only `TC-LINT-14`–`TC-LINT-15` remain pending later UAT verification.
 
 ---
 
@@ -185,9 +185,9 @@ npm run lint   # runs `eslint .` via eslint.config.js
 
 ---
 
-### Suite 6 — `GoogleHotspotMap` & `LocationPin` Marker/Fallback Tests *(Category C + D)*
+### Suite 6 — `GoogleHotspotMap` & `LocationPin` Marker/Fallback Tests *(Category C + D)* ✅ VERIFIED (2026-11-17)
 
-#### `TC-LINT-11`: Google Maps Mode, Pin Colors & Toggle Button (`GoogleHotspotMap.jsx`, `LocationPin.jsx`)
+#### `TC-LINT-11`: Google Maps Mode, Pin Colors & Toggle Button (`GoogleHotspotMap.jsx`, `LocationPin.jsx`) ✅ VERIFIED
 - **Covers**: [`LocationPin.jsx`](file:///c:/Users/basyir/smarttraffic/src/components/map/LocationPin.jsx#L1) (`getPinColor`), [`GoogleHotspotMap.jsx`](file:///c:/Users/basyir/smarttraffic/src/components/map/GoogleHotspotMap.jsx#L174-L325).
 - **Precondition**: Valid `VITE_GOOGLE_MAPS_API_KEY` configured and network online.
 - **Steps**:
@@ -197,7 +197,7 @@ npm run lint   # runs `eslint .` via eslint.config.js
   4. Click `🗺️ Tukar ke Peta Google`: verify Google Map restores cleanly without blank container.
 - **Expected Result**: All markers, colors (`getPinColor`), `InfoWindow`, and mode toggle work with zero console errors or re-render loops.
 
-#### `TC-LINT-12`: Offline / Missing Key / Auth Failure Fallback (`GoogleHotspotMap.jsx`)
+#### `TC-LINT-12`: Offline / Missing Key / Auth Failure Fallback (`GoogleHotspotMap.jsx`) ✅ VERIFIED
 - **Covers**: [`GoogleHotspotMap.jsx`](file:///c:/Users/basyir/smarttraffic/src/components/map/GoogleHotspotMap.jsx#L159-L200).
 - **Steps**:
   1. Test with missing/empty `VITE_GOOGLE_MAPS_API_KEY` (or DevTools Network set to *Offline* before load).
@@ -208,7 +208,7 @@ npm run lint   # runs `eslint .` via eslint.config.js
 
 ### Suite 7 — `useLocations` Master Hook Pagination & Cross-Tab Live Sync *(Category D)*
 
-#### `TC-LINT-13`: `/lokasi` Initial Load, Cursor Pagination & Sort Toggle (`useLocations.js`)
+#### `TC-LINT-13`: `/lokasi` Initial Load, Cursor Pagination & Sort Toggle (`useLocations.js`) ✅ VERIFIED
 - **Covers**: [`useLocations.js`](file:///c:/Users/basyir/smarttraffic/src/hooks/useLocations.js#L59-L196), [`Lokasi.jsx`](file:///c:/Users/basyir/smarttraffic/src/views/Lokasi.jsx).
 - **Precondition**: Signed in as `Admin`, DevTools Console/Network open.
 - **Steps**:
@@ -244,6 +244,6 @@ npm run lint   # runs `eslint .` via eslint.config.js
 - [x] `npm run lint` (`eslint .`) outputs **0 errors, 0 warnings** (`exit 0`, verified `2026-11-15`).
 - [x] `npm run build` (`vite build`) completes with `exit 0` (`146 modules transformed`, verified `2026-11-15`).
 - [x] All legacy `samalahkita` hooks from `SPEC.md` §9 Note remain preserved.
-- [x] `Suites 2–5` (`TC-LINT-04`–`TC-LINT-10`) verified in browser/emulator testing (`2026-11-15`).
-- [ ] `Suites 6–7` (`TC-LINT-11`–`TC-LINT-15`) pass in browser/emulator testing *(remaining)*.
+- [x] `Suites 2–6` (`TC-LINT-04`–`TC-LINT-12`) & `TC-LINT-13` verified in browser/emulator testing (`2026-11-15` / `2026-11-17`).
+- [ ] `TC-LINT-14`–`TC-LINT-15` (`Suite 7` mutations & live sync) pass in browser/emulator testing *(remaining)*.
 - [x] Update [`spec/SPEC.md`](file:///c:/Users/basyir/smarttraffic/spec/SPEC.md#L1162-L1168) Section 9 (`Deferred Maintenance`) to **`✅ COMPLETED`**.

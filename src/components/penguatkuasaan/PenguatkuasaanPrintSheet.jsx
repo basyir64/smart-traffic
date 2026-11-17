@@ -95,6 +95,10 @@ export default function PenguatkuasaanPrintSheet({ report }) {
             const samanList = normalizeSamanList(op.saman_list);
             const samanSummary = summarizeSamanCategories(samanList);
             const breakdown = formatSamanCategoryBreakdown(samanSummary);
+            const numberedSamanText = samanList
+              .map((s) => s.no_saman)
+              .filter(Boolean)
+              .join(", ");
 
             return (
               <tr key={op.id || idx} className="siasatan-print-row-keep">
@@ -121,16 +125,18 @@ export default function PenguatkuasaanPrintSheet({ report }) {
                           <span> · {breakdown.join(" · ")}</span>
                         )}
                       </div>
-                      <div
-                        style={{
-                          fontSize: "8.5px",
-                          color: "#334155",
-                          marginTop: "2px",
-                          overflowWrap: "anywhere",
-                        }}
-                      >
-                        {samanList.map((s) => s.no_saman).join(", ")}
-                      </div>
+                      {numberedSamanText && (
+                        <div
+                          style={{
+                            fontSize: "8.5px",
+                            color: "#334155",
+                            marginTop: "2px",
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          {numberedSamanText}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <span>0</span>

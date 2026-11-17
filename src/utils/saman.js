@@ -1,9 +1,14 @@
-export const SAMAN_CATEGORIES = ["POL 170 A", "POL 257"];
+export const IN_INVESTIGATION_SAMAN_CATEGORY = "Dalam Siasatan";
+export const SAMAN_CATEGORIES = [
+  "POL 170 A",
+  "POL 257",
+  IN_INVESTIGATION_SAMAN_CATEGORY,
+];
 export const UNSET_SAMAN_CATEGORY = "Belum Ditetapkan";
 
 /**
- * Normalizes user or CSV input strings (e.g. "pol 170a", "POL170A", "pol257")
- * to canonical "POL 170 A" or "POL 257", returning "" if unrecognised.
+ * Normalizes user or CSV input strings (e.g. "pol 170a", "POL170A", "pol257",
+ * "dalam siasatan") to canonical category strings, returning "" if unrecognised.
  */
 export function normalizeSamanCategory(raw) {
   const collapsed = String(raw ?? "")
@@ -14,7 +19,15 @@ export function normalizeSamanCategory(raw) {
   const compact = collapsed.replace(/\s+/g, "");
   if (compact === "POL170A") return "POL 170 A";
   if (compact === "POL257") return "POL 257";
+  if (compact === "DALAMSIASATAN") return IN_INVESTIGATION_SAMAN_CATEGORY;
   return "";
+}
+
+function getSamanCategoryPriority(cat) {
+  if (cat === "POL 170 A" || cat === "POL 257") return 3;
+  if (cat === IN_INVESTIGATION_SAMAN_CATEGORY) return 2;
+  if (cat === UNSET_SAMAN_CATEGORY) return 1;
+  return 0;
 }
 
 /**
@@ -43,10 +56,13 @@ export function normalizeSamanList(rawList) {
       }
       if (item && typeof item === "object") {
         const no = String(item.no_saman ?? item.nombor_saman ?? "").trim();
-        if (!no) return null;
+        const coercedCat = coerceStoredSamanCategory(item.kategori_saman);
+        if (!no && coercedCat !== IN_INVESTIGATION_SAMAN_CATEGORY) {
+          return null;
+        }
         return {
           no_saman: no,
-          kategori_saman: coerceStoredSamanCategory(item.kategori_saman),
+          kategori_saman: coercedCat,
         };
       }
       return null;
@@ -56,17 +72,17 @@ export function normalizeSamanList(rawList) {
 
 /**
  * Deduplicates `{ no_saman, kategori_saman }` entries case-insensitively while
- * preserving insertion order. Upgrades "Belum Ditetapkan" if another matching
- * row specifies a valid category.
+ * preserving insertion order. Preserves blank-no_saman "Dalam Siasatan" rows
+ * independently and upgrades duplicate entries using priority:
+ * POL 170 A / POL 257 > Dalam Siasatan > Belum Ditetapkan.
  */
 export function deduplicateSamanObjects(list = []) {
   const seenMap = new Map();
+  const deduped = [];
   let duplicateCount = 0;
 
   for (const item of list) {
     const no = String(item?.no_saman ?? "").trim();
-    if (!no) continue;
-    const key = no.toUpperCase();
     const canonicalCat = normalizeSamanCategory(item?.kategori_saman);
     const resolvedCat =
       canonicalCat ||
@@ -74,31 +90,44 @@ export function deduplicateSamanObjects(list = []) {
         ? UNSET_SAMAN_CATEGORY
         : "");
 
-    const existing = seenMap.get(key);
-    if (existing) {
-      duplicateCount += 1;
-      if (
-        (!existing.kategori_saman ||
-          existing.kategori_saman === UNSET_SAMAN_CATEGORY) &&
-        canonicalCat
-      ) {
-        existing.kategori_saman = canonicalCat;
+    if (!no) {
+      if (canonicalCat === IN_INVESTIGATION_SAMAN_CATEGORY) {
+        deduped.push({
+          no_saman: "",
+          kategori_saman: IN_INVESTIGATION_SAMAN_CATEGORY,
+        });
       }
       continue;
     }
 
-    seenMap.set(key, {
+    const key = no.toUpperCase();
+    const existing = seenMap.get(key);
+    if (existing) {
+      duplicateCount += 1;
+      if (
+        getSamanCategoryPriority(resolvedCat) >
+        getSamanCategoryPriority(existing.kategori_saman)
+      ) {
+        existing.kategori_saman = resolvedCat;
+      }
+      continue;
+    }
+
+    const entry = {
       no_saman: no,
       kategori_saman: resolvedCat,
-    });
+    };
+    seenMap.set(key, entry);
+    deduped.push(entry);
   }
 
-  return { result: Array.from(seenMap.values()), duplicateCount };
+  return { result: deduped, duplicateCount };
 }
 
 /**
  * Validates batch saman rows from UI forms before saving.
  * Totally empty rows (blank number & blank category) are skipped as optional.
+ * Allows blank `no_saman` when `kategori_saman === "Dalam Siasatan"`.
  */
 export function validateSamanRows(
   rows = [],
@@ -122,10 +151,17 @@ export function validateSamanRows(
     }
 
     if (!no && rawKat) {
+      if (canonicalKat === IN_INVESTIGATION_SAMAN_CATEGORY) {
+        cleanList.push({
+          no_saman: "",
+          kategori_saman: IN_INVESTIGATION_SAMAN_CATEGORY,
+        });
+        continue;
+      }
       const msg =
         rawKat === UNSET_SAMAN_CATEGORY
           ? 'Masukkan No. Saman atau pilih "-- Pilih Kategori Saman --" untuk mengosongkan baris.'
-          : "Sila masukkan No. Saman atau kosongkan Kategori Saman.";
+          : 'Sila masukkan No. Saman atau pilih kategori "Dalam Siasatan".';
       rowErrors[i] = msg;
       if (!firstError) {
         firstError = `Baris ${i + 1}: ${msg}`;
@@ -134,7 +170,8 @@ export function validateSamanRows(
     }
 
     if (!canonicalKat && !isLegacyUnset) {
-      const msg = "Sila pilih Kategori Saman (POL 170 A atau POL 257).";
+      const msg =
+        "Sila pilih Kategori Saman (POL 170 A, POL 257, atau Dalam Siasatan).";
       rowErrors[i] = msg;
       if (!firstError) {
         firstError = `Baris ${i + 1}: ${msg} (No. Saman: ${no})`;
@@ -169,17 +206,20 @@ export function validateSamanRows(
 }
 
 /**
- * Counts POL 170 A, POL 257, and Belum Ditetapkan inside a single operation's saman_list.
+ * Counts POL 170 A, POL 257, Dalam Siasatan, and Belum Ditetapkan inside a single operation's saman_list.
  */
 export function summarizeSamanCategories(samanList = []) {
   const normalized = normalizeSamanList(samanList);
   let pol170a = 0;
   let pol257 = 0;
+  let dalamSiasatan = 0;
   let unset = 0;
 
   normalized.forEach((item) => {
     if (item.kategori_saman === "POL 170 A") pol170a += 1;
     else if (item.kategori_saman === "POL 257") pol257 += 1;
+    else if (item.kategori_saman === IN_INVESTIGATION_SAMAN_CATEGORY)
+      dalamSiasatan += 1;
     else unset += 1;
   });
 
@@ -187,6 +227,7 @@ export function summarizeSamanCategories(samanList = []) {
     total: normalized.length,
     pol170a,
     pol257,
+    dalamSiasatan,
     unset,
   };
 }
@@ -198,22 +239,38 @@ export function formatSamanCategoryBreakdown(summary = {}) {
   const parts = [];
   if (summary.pol170a > 0) parts.push(`POL 170 A (${summary.pol170a})`);
   if (summary.pol257 > 0) parts.push(`POL 257 (${summary.pol257})`);
+  if (summary.dalamSiasatan > 0)
+    parts.push(`${IN_INVESTIGATION_SAMAN_CATEGORY} (${summary.dalamSiasatan})`);
   if (summary.unset > 0) parts.push(`${UNSET_SAMAN_CATEGORY} (${summary.unset})`);
   return parts;
 }
 
 /**
  * Aggregates all summons across active-period `siasatan` and `penguatkuasaan`
- * documents, deduplicating identical `no_saman` entries case-insensitively.
+ * documents: deduplicates numbered `no_saman` entries case-insensitively with
+ * priority (`POL 170 A` / `POL 257` > `Dalam Siasatan` > `Belum Ditetapkan`),
+ * and includes blank-`no_saman` `"Dalam Siasatan"` items individually.
  */
 export function aggregatePeriodSaman(records = [], operations = []) {
   const uniqueMap = new Map();
 
-  const upsert = ({ no_saman, kategori_saman, date, source }) => {
+  const upsert = ({ no_saman, kategori_saman, date, source, fallbackKey }) => {
     const trimmedNo = String(no_saman || "").trim();
-    if (!trimmedNo) return;
-    const key = trimmedNo.toUpperCase();
     const coercedCat = coerceStoredSamanCategory(kategori_saman);
+
+    if (!trimmedNo) {
+      if (coercedCat !== IN_INVESTIGATION_SAMAN_CATEGORY) return;
+      uniqueMap.set(fallbackKey, {
+        no_saman: "",
+        kategori_saman: IN_INVESTIGATION_SAMAN_CATEGORY,
+        date: date || "",
+        fromSiasatan: source === "siasatan",
+        fromPenguatkuasaan: source === "penguatkuasaan",
+      });
+      return;
+    }
+
+    const key = trimmedNo.toUpperCase();
     const existing = uniqueMap.get(key);
 
     if (!existing) {
@@ -228,8 +285,8 @@ export function aggregatePeriodSaman(records = [], operations = []) {
     }
 
     if (
-      existing.kategori_saman === UNSET_SAMAN_CATEGORY &&
-      coercedCat !== UNSET_SAMAN_CATEGORY
+      getSamanCategoryPriority(coercedCat) >
+      getSamanCategoryPriority(existing.kategori_saman)
     ) {
       existing.kategori_saman = coercedCat;
     }
@@ -240,24 +297,27 @@ export function aggregatePeriodSaman(records = [], operations = []) {
     if (source === "penguatkuasaan") existing.fromPenguatkuasaan = true;
   };
 
-  records.forEach((r) => {
-    if (!r?.no_saman) return;
+  records.forEach((r, idx) => {
+    const coerced = coerceStoredSamanCategory(r?.kategori_saman);
+    if (!r?.no_saman && coerced !== IN_INVESTIGATION_SAMAN_CATEGORY) return;
     upsert({
-      no_saman: r.no_saman,
-      kategori_saman: r.kategori_saman,
-      date: r.tarikh_kemalangan || "",
+      no_saman: r?.no_saman || "",
+      kategori_saman: r?.kategori_saman,
+      date: r?.tarikh_kemalangan || "",
       source: "siasatan",
+      fallbackKey: `__blank__:siasatan:${r?.id || idx}`,
     });
   });
 
-  operations.forEach((op) => {
+  operations.forEach((op, opIdx) => {
     const list = normalizeSamanList(op?.saman_list);
-    list.forEach((entry) => {
+    list.forEach((entry, entryIdx) => {
       upsert({
         no_saman: entry.no_saman,
         kategori_saman: entry.kategori_saman,
         date: op.tarikh || "",
         source: "penguatkuasaan",
+        fallbackKey: `__blank__:penguatkuasaan:${op?.id || opIdx}:${entryIdx}`,
       });
     });
   });
@@ -265,11 +325,14 @@ export function aggregatePeriodSaman(records = [], operations = []) {
   const items = Array.from(uniqueMap.values());
   let pol170a = 0;
   let pol257 = 0;
+  let dalamSiasatan = 0;
   let unset = 0;
 
   items.forEach((item) => {
     if (item.kategori_saman === "POL 170 A") pol170a += 1;
     else if (item.kategori_saman === "POL 257") pol257 += 1;
+    else if (item.kategori_saman === IN_INVESTIGATION_SAMAN_CATEGORY)
+      dalamSiasatan += 1;
     else unset += 1;
   });
 
@@ -277,6 +340,7 @@ export function aggregatePeriodSaman(records = [], operations = []) {
     total: items.length,
     pol170a,
     pol257,
+    dalamSiasatan,
     unset,
     items,
   };

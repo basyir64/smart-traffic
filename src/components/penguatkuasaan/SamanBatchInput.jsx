@@ -1,10 +1,14 @@
 import { useMemo, useRef, useState } from "react";
 import {
   SAMAN_CATEGORIES,
+  IN_INVESTIGATION_SAMAN_CATEGORY,
   UNSET_SAMAN_CATEGORY,
   deduplicateSamanObjects,
   normalizeSamanCategory,
 } from "../../utils/saman";
+
+const isPopulatedSamanRow = (row) =>
+  Boolean(row?.no_saman?.trim() || row?.kategori_saman?.trim());
 
 /**
  * Parses a single RFC-4180 CSV line supporting quoted values with commas.
@@ -83,21 +87,21 @@ function parseSamanCsv(text) {
       };
     }
 
-    if (!rawSaman) {
-      return {
-        error: `Baris ${rowNum} CSV: Lajur "nombor_saman" tidak boleh kosong.`,
-      };
-    }
-
     const canonicalKat = normalizeSamanCategory(rawKat);
     if (!rawKat) {
       return {
-        error: `Baris ${rowNum} CSV: Lajur "kategori_saman" tidak boleh kosong. Gunakan "POL 170 A" atau "POL 257".`,
+        error: `Baris ${rowNum} CSV: Lajur "kategori_saman" tidak boleh kosong. Gunakan "POL 170 A", "POL 257", atau "Dalam Siasatan".`,
       };
     }
     if (!canonicalKat) {
       return {
-        error: `Baris ${rowNum} CSV: Kategori Saman "${rawKat}" tidak sah. Hanya "POL 170 A" atau "POL 257" dibenarkan.`,
+        error: `Baris ${rowNum} CSV: Kategori Saman "${rawKat}" tidak sah. Hanya "POL 170 A", "POL 257", atau "Dalam Siasatan" dibenarkan.`,
+      };
+    }
+
+    if (!rawSaman && canonicalKat !== IN_INVESTIGATION_SAMAN_CATEGORY) {
+      return {
+        error: `Baris ${rowNum} CSV: Lajur "nombor_saman" tidak boleh kosong bagi kategori "${canonicalKat}".`,
       };
     }
 
@@ -213,7 +217,7 @@ export default function SamanBatchInput({
         return;
       }
 
-      const existingFilled = rows.filter((r) => r.no_saman.trim().length > 0);
+      const existingFilled = rows.filter(isPopulatedSamanRow);
       if (existingFilled.length === 0) {
         emit(parsed.entries);
         const dupNote =
@@ -245,7 +249,7 @@ export default function SamanBatchInput({
         `Senarai digantikan dengan ${pendingCsv.entries.length} rekod saman dari "${pendingCsv.fileName}".`
       );
     } else if (mode === "append") {
-      const existingNonEmpty = rows.filter((r) => r.no_saman.trim().length > 0);
+      const existingNonEmpty = rows.filter(isPopulatedSamanRow);
       const { result, duplicateCount } = deduplicateSamanObjects([
         ...existingNonEmpty,
         ...pendingCsv.entries,
@@ -261,7 +265,7 @@ export default function SamanBatchInput({
     setPendingCsv(null);
   };
 
-  const filledCount = rows.filter((r) => r.no_saman.trim().length > 0).length;
+  const filledCount = rows.filter(isPopulatedSamanRow).length;
 
   const duplicateCounts = useMemo(() => {
     const counts = new Map();
@@ -331,7 +335,7 @@ export default function SamanBatchInput({
         <code className="text-[var(--color-accent-soft)]">
           kategori_saman
         </code>{" "}
-        (POL 170 A atau POL 257).
+        (POL 170 A, POL 257, atau Dalam Siasatan).
       </p>
 
       {csvError && (
@@ -396,7 +400,11 @@ export default function SamanBatchInput({
                   value={row.no_saman}
                   onChange={(e) => handleNoChange(idx, e.target.value)}
                   disabled={disabled}
-                  placeholder={`Cth: SMN-2026-0040${idx + 1}`}
+                  placeholder={
+                    row.kategori_saman === IN_INVESTIGATION_SAMAN_CATEGORY
+                      ? "Pilihan (jika Dalam Siasatan)"
+                      : `Cth: SMN-2026-0040${idx + 1}`
+                  }
                   aria-label={`Nombor saman ${idx + 1}`}
                   className={`flex-1 min-w-[140px] border ${
                     rowError

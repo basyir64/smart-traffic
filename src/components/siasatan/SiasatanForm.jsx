@@ -6,6 +6,7 @@ import SiasatanRoadFields from "./SiasatanRoadFields";
 import { useRegisterUnsavedForm } from "../../hooks/useUnsavedChanges";
 import {
   SAMAN_CATEGORIES,
+  IN_INVESTIGATION_SAMAN_CATEGORY,
   normalizeSamanCategory,
 } from "../../utils/saman";
 import {
@@ -159,16 +160,21 @@ export default function SiasatanForm({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const savedSaman = noSaman.trim().toUpperCase();
-    if (!savedSaman) {
-      setStatusText("Ralat: Sila masukkan No. Saman yang sah.");
-      return;
-    }
-
     const validKategoriSaman = normalizeSamanCategory(kategoriSaman);
     if (!validKategoriSaman) {
       setStatusText(
-        "Ralat: Sila pilih Kategori Saman (POL 170 A atau POL 257) sebelum menyimpan."
+        "Ralat: Sila pilih Kategori Saman (POL 170 A, POL 257, atau Dalam Siasatan) sebelum menyimpan."
+      );
+      return;
+    }
+
+    const savedSaman = noSaman.trim().toUpperCase();
+    if (
+      !savedSaman &&
+      validKategoriSaman !== IN_INVESTIGATION_SAMAN_CATEGORY
+    ) {
+      setStatusText(
+        'Ralat: Sila masukkan No. Saman yang sah (atau pilih "Dalam Siasatan").'
       );
       return;
     }
@@ -225,7 +231,7 @@ export default function SiasatanForm({
 
       resetFields();
       setStatusText(
-        `Status: Rekod ${savedSaman} disimpan & dikemas kini pada Dashboard.`
+        `Status: Rekod ${savedSaman || savedReport} disimpan & dikemas kini pada Dashboard.`
       );
     } catch (err) {
       setStatusText(`Ralat: ${err.message}`);
@@ -249,19 +255,35 @@ export default function SiasatanForm({
       >
         {/* 1. No. Saman */}
         <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="noSaman"
-            className="text-xs text-[var(--color-text-label)] font-semibold"
-          >
-            1. No. Saman
-          </label>
+          <div className="flex items-center justify-between gap-2">
+            <label
+              htmlFor="noSaman"
+              className="text-xs text-[var(--color-text-label)] font-semibold"
+            >
+              1. No. Saman
+            </label>
+            {normalizeSamanCategory(kategoriSaman) ===
+              IN_INVESTIGATION_SAMAN_CATEGORY && (
+              <span className="text-[10.5px] font-semibold text-amber-300">
+                Pilihan
+              </span>
+            )}
+          </div>
           <input
             id="noSaman"
             type="text"
             value={noSaman}
             onChange={(e) => setNoSaman(e.target.value)}
-            placeholder="Contoh: SMN-2026-00142"
-            required
+            placeholder={
+              normalizeSamanCategory(kategoriSaman) ===
+              IN_INVESTIGATION_SAMAN_CATEGORY
+                ? "Pilihan (jika Dalam Siasatan)"
+                : "Contoh: SMN-2026-00142"
+            }
+            required={
+              normalizeSamanCategory(kategoriSaman) !==
+              IN_INVESTIGATION_SAMAN_CATEGORY
+            }
             className="w-full border border-[var(--color-border-light)] text-[var(--color-text-primary)] bg-[var(--color-nav-bg)] px-3 py-2.5 rounded-[9px] text-[13px] uppercase placeholder:normal-case focus:outline-none focus:border-[var(--color-accent)]"
           />
         </div>

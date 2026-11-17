@@ -307,7 +307,15 @@ export default function PenguatkuasaanTable({
                 const samanCount = samanSummary.total;
                 const breakdown = formatSamanCategoryBreakdown(samanSummary);
                 const samanTooltip = samanList
-                  .map((s) => `${s.no_saman} (${s.kategori_saman})`)
+                  .map((s) =>
+                    s.no_saman
+                      ? `${s.no_saman} (${s.kategori_saman})`
+                      : s.kategori_saman
+                  )
+                  .join(", ");
+                const numberedSamanText = samanList
+                  .map((s) => s.no_saman)
+                  .filter(Boolean)
                   .join(", ");
 
                 return (
@@ -354,13 +362,15 @@ export default function PenguatkuasaanTable({
                             {samanCount} saman
                           </span>
                           {breakdown.length > 0 && (
-                            <div className="text-[11px] text-[var(--color-text-primary)] mt-0.5 whitespace-nowrap">
+                            <div className="text-[11px] text-[var(--color-text-primary)] mt-0.5 leading-snug">
                               {breakdown.join(" · ")}
                             </div>
                           )}
-                          <div className="text-[11px] text-[var(--color-text-secondary)] truncate max-w-[170px]">
-                            {samanList.map((s) => s.no_saman).join(", ")}
-                          </div>
+                          {numberedSamanText && (
+                            <div className="text-[11px] text-[var(--color-text-secondary)] truncate max-w-[170px]">
+                              {numberedSamanText}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <span className="text-[var(--color-text-secondary)]">

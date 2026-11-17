@@ -41,17 +41,19 @@ export default function TrendBarChart({
       const samItem = samanTrend[idx] || {};
       const pol170a = Number(samItem.pol170a || 0);
       const pol257 = Number(samItem.pol257 || 0);
+      const dalamSiasatan = Number(samItem.dalamSiasatan || 0);
       const unset = Number(samItem.unset || 0);
       const samanTotal =
         samItem.total !== undefined
           ? Number(samItem.total)
-          : pol170a + pol257 + unset;
+          : pol170a + pol257 + dalamSiasatan + unset;
 
       return {
         label: samItem.label || `${unitLabel} ${idx + 1}`,
         accidents,
         pol170a,
         pol257,
+        dalamSiasatan,
         unset,
         samanTotal,
       };
@@ -64,27 +66,37 @@ export default function TrendBarChart({
         accidents: acc.accidents + b.accidents,
         pol170a: acc.pol170a + b.pol170a,
         pol257: acc.pol257 + b.pol257,
+        dalamSiasatan: acc.dalamSiasatan + b.dalamSiasatan,
         unset: acc.unset + b.unset,
         samanTotal: acc.samanTotal + b.samanTotal,
       }),
-      { accidents: 0, pol170a: 0, pol257: 0, unset: 0, samanTotal: 0 }
+      {
+        accidents: 0,
+        pol170a: 0,
+        pol257: 0,
+        dalamSiasatan: 0,
+        unset: 0,
+        samanTotal: 0,
+      }
     );
   }, [mergedBuckets]);
 
+  const hasDalamSiasatan = totals.dalamSiasatan > 0;
   const hasUnset = totals.unset > 0;
 
   const maxValue = useMemo(() => {
     const vals = mergedBuckets.flatMap((b) => {
       if (viewMode === "accidents") return [b.accidents];
       if (viewMode === "saman") {
-        return hasUnset
-          ? [b.pol170a, b.pol257, b.unset]
-          : [b.pol170a, b.pol257];
+        const list = [b.pol170a, b.pol257];
+        if (hasDalamSiasatan) list.push(b.dalamSiasatan);
+        if (hasUnset) list.push(b.unset);
+        return list;
       }
       return [b.accidents, b.samanTotal];
     });
     return Math.max(1, ...vals);
-  }, [mergedBuckets, viewMode, hasUnset]);
+  }, [mergedBuckets, viewMode, hasDalamSiasatan, hasUnset]);
 
   const barPx = (val) => {
     if (!val || val <= 0) return 3;
@@ -111,8 +123,10 @@ export default function TrendBarChart({
             {viewMode === "accidents"
               ? "Jumlah kes kemalangan (Siasatan + Operasi)"
               : viewMode === "saman"
-                ? "Pecahan saman unik mengikut kategori (POL 170 A vs POL 257)"
-                : "Perbandingan jumlah kemalangan dengan saman unik dikeluarkan"}
+                ? hasDalamSiasatan
+                  ? "Pecahan saman mengikut kategori (POL 170 A, POL 257 & Dalam Siasatan)"
+                  : "Pecahan saman unik mengikut kategori (POL 170 A vs POL 257)"
+                : "Perbandingan jumlah kemalangan dengan saman direkodkan"}
           </p>
         </div>
 
@@ -164,6 +178,12 @@ export default function TrendBarChart({
               <span className="w-2.5 h-2.5 rounded-xs inline-block bg-violet-400" />
               <span>POL 257 ({totals.pol257})</span>
             </div>
+            {hasDalamSiasatan && (
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-xs inline-block bg-amber-400" />
+                <span>Dalam Siasatan ({totals.dalamSiasatan})</span>
+              </div>
+            )}
             {hasUnset && (
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-xs inline-block bg-slate-400" />
@@ -250,6 +270,24 @@ export default function TrendBarChart({
                     />
                   </div>
 
+                  {hasDalamSiasatan && (
+                    <div
+                      title={`${b.label} · Dalam Siasatan: ${b.dalamSiasatan}`}
+                      className="flex-1 max-w-[24px] flex flex-col items-center justify-end"
+                    >
+                      <strong className="text-[11px] text-amber-300 mb-1">
+                        {b.dalamSiasatan}
+                      </strong>
+                      <div
+                        className="w-full rounded-t-[5px] bg-amber-400 transition-all duration-300"
+                        style={{
+                          height: `${barPx(b.dalamSiasatan)}px`,
+                          opacity: b.dalamSiasatan > 0 ? 1 : 0.2,
+                        }}
+                      />
+                    </div>
+                  )}
+
                   {hasUnset && (
                     <div
                       title={`${b.label} · Belum Ditetapkan: ${b.unset}`}
@@ -281,6 +319,8 @@ export default function TrendBarChart({
             b.samanTotal > 0 ? (b.pol170a / b.samanTotal) * 100 : 0;
           const pol257Pct =
             b.samanTotal > 0 ? (b.pol257 / b.samanTotal) * 100 : 0;
+          const dalamSiasatanPct =
+            b.samanTotal > 0 ? (b.dalamSiasatan / b.samanTotal) * 100 : 0;
           const unsetPct =
             b.samanTotal > 0 ? (b.unset / b.samanTotal) * 100 : 0;
 
@@ -308,7 +348,7 @@ export default function TrendBarChart({
                 </div>
 
                 <div
-                  title={`${b.label} · Saman Unik: ${b.samanTotal} (POL 170 A: ${b.pol170a}, POL 257: ${b.pol257}${b.unset > 0 ? `, Belum Ditetapkan: ${b.unset}` : ""})`}
+                  title={`${b.label} · Saman: ${b.samanTotal} (POL 170 A: ${b.pol170a}, POL 257: ${b.pol257}${hasDalamSiasatan ? `, Dalam Siasatan: ${b.dalamSiasatan}` : ""}${b.unset > 0 ? `, Belum Ditetapkan: ${b.unset}` : ""})`}
                   className="flex-1 max-w-[26px] flex flex-col items-center justify-end"
                 >
                   <strong className="text-[11px] text-sky-300 mb-1">
@@ -331,6 +371,12 @@ export default function TrendBarChart({
                       <div
                         className="w-full bg-violet-400"
                         style={{ height: `${pol257Pct}%` }}
+                      />
+                    )}
+                    {b.dalamSiasatan > 0 && (
+                      <div
+                        className="w-full bg-amber-400"
+                        style={{ height: `${dalamSiasatanPct}%` }}
                       />
                     )}
                     {b.unset > 0 && (
@@ -362,6 +408,9 @@ export default function TrendBarChart({
             {totals.samanTotal} saman unik
           </strong>{" "}
           (POL 170 A: {totals.pol170a}, POL 257: {totals.pol257}
+          {hasDalamSiasatan
+            ? `, Dalam Siasatan: ${totals.dalamSiasatan}`
+            : ""}
           {hasUnset ? `, Belum Ditetapkan: ${totals.unset}` : ""})
         </span>
         <span>Nota: Nombor saman bertindih dinyahtindih secara automatik.</span>

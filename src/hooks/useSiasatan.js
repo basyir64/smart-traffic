@@ -323,13 +323,14 @@ export function useSiasatan() {
 
   const addSiasatan = useCallback(
     async (payload) => {
+      const slugBase =
+        String(payload.no_saman || payload.no_report || "smn")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "") || "smn";
       const normalized = normalizeSiasatan({
         ...payload,
-        id:
-          payload.id ||
-          `${String(payload.no_saman || "smn")
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`,
+        id: payload.id || `${slugBase}-${Date.now()}`,
       });
 
       const { id, ...docFields } = normalized;

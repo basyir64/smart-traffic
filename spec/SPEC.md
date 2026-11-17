@@ -1169,14 +1169,14 @@ All Phase 1 and Phase 2 design, schema, UX, and print layout decisions above wer
 
 ---
 
-### UAT Round 5 — Development Phases *(Implemented — Pending UAT Round 5 Verification)*
+### UAT Round 5 — Development Phases ✅ COMPLETED (2026-11-17)
 
 > [!NOTE]
-> **Fifth Round of User Acceptance Testing (UAT 5) Scope — Implemented (`2026-11-16`)**:
-> Tracks the official rebranding (`SATRIA PerTH AI`), eyebrow placement of `Prototaip Interaktif`, system subtitle expansion, agency motto integration, medium-screen header/nav responsiveness, date/time input overflow fixes, and touch-friendly Dashboard info modals — **strictly excluding** URL/routing base paths, internal auth domains, `role_matrix.md`, and Firestore collection schemas.
-> Automated verification (`eslint .` = 0 errors/0 warnings, `vite build` exit 0) completed; interactive browser/touch/print verification pending UAT sign-off.
+> **Fifth Round of User Acceptance Testing (UAT 5) Scope — ✅ COMPLETED (`2026-11-17`)**:
+> - **Phases 1–2 ✅ COMPLETED (`2026-11-16`)**: Rebranding (`SATRIA PerTH AI`), eyebrow placement of `Prototaip Interaktif`, system subtitle expansion, agency motto integration, medium-screen header/nav responsiveness, date/time input overflow fixes, and touch-friendly Dashboard info modals passed interactive UAT (`eslint .` = 0 errors/warnings, `vite build` exit 0).
+> - **Phase 3 ✅ COMPLETED (`2026-11-17`)**: Added `"Dalam Siasatan"` option to `Kategori Saman` across Siasatan, Penguatkuasaan, and Dashboard analytics (optional `No. Saman` in both Siasatan & Penguatkuasaan, separate `dalamSiasatan` Dashboard tally including blank-`No. Saman` records, cross-collection deduplication priority, and conditional `> 0` Dashboard display).
 
-#### UAT 5 · Phase 1 — Rebranding (`SATRIA PerTH AI`), Eyebrow/Subtitle/Motto & Medium-Screen Layout
+#### UAT 5 · Phase 1 — Rebranding (`SATRIA PerTH AI`), Eyebrow/Subtitle/Motto & Medium-Screen Layout ✅ COMPLETED (2026-11-16)
 
 ##### 1. Confirmed Copy & Asset Mapping
 | Element | Current Text | Target Text *(Confirmed)* | Surface Notes |
@@ -1222,7 +1222,7 @@ All Phase 1 and Phase 2 design, schema, UX, and print layout decisions above wer
 
 ---
 
-#### UAT 5 · Phase 2 — Date/Time Input Overflow Fix & Touch-Friendly Dashboard Info Modals
+#### UAT 5 · Phase 2 — Date/Time Input Overflow Fix & Touch-Friendly Dashboard Info Modals ✅ COMPLETED (2026-11-16)
 
 ##### 4. Fix Right-Edge Overflow on All `<input type="date">` & `<input type="time">` Fields
 - **Affected Files (10 controls across 4 components — Forms & Edit Modals)**:
@@ -1273,6 +1273,43 @@ All Phase 1 and Phase 2 design, schema, UX, and print layout decisions above wer
 3. Square emblem updated from `AI` → `SATRIA` with smaller centered font; exact mixed casing `SATRIA PerTH AI` kept everywhere; CSV renamed to `SATRIA_PerTH_AI_demo.csv`; `role_matrix.md` left untouched.
 4. Date/time right-edge overflow scoped strictly to `<input type="date">` and `<input type="time">` fields & modals.
 5. Dashboard touch info modals scoped strictly to the 2 `LocationRisk.jsx` info buttons (`i` enlarged to `w-7 h-7` + `ⓘ Bagaimana AI Menjana?`, click/tap-only → Modal on both desktop & touch; `TrendBarChart.jsx` untouched).
+
+---
+
+#### UAT 5 · Phase 3 — `"Dalam Siasatan"` Option for `Kategori Saman` (Siasatan + Penguatkuasaan + Dashboard) ✅ COMPLETED (2026-11-17)
+
+##### 1. Confirmed Scope & Business Rules
+1. **Option Value & Dropdown Ordering**: Add `"Dalam Siasatan"` (`IN_INVESTIGATION_SAMAN_CATEGORY = "Dalam Siasatan"`) to `SAMAN_CATEGORIES = ["POL 170 A", "POL 257", "Dalam Siasatan"]`, ordered in all dropdowns as `-- Pilih Kategori Saman --` *(default `""`)*, `POL 170 A`, `POL 257`, `Dalam Siasatan`.
+2. **Dual-Module Scope**:
+   - **Siasatan**: `Borang Input Data Siasatan` (`SiasatanForm.jsx`), `Kemaskini Rekod Siasatan` (`SiasatanTable.jsx`), `normalizeSiasatan` (`useSiasatan.js`), and `SiasatanPrintSheet.jsx` (`buildSiasatanPrintModel`).
+   - **Penguatkuasaan**: `9. Saman` batch rows & CSV parser (`SamanBatchInput.jsx`), `PenguatkuasaanForm.jsx`, `PenguatkuasaanTable.jsx` (table summary, Edit Modal, tooltips), `normalizeOperation` (`usePenguatkuasaan.js`), and `PenguatkuasaanPrintSheet.jsx`.
+3. **Optional `No. Saman` When `"Dalam Siasatan"` Is Selected (Confirmed — Option 1B & Option 2B)**:
+   - **Siasatan (`1. No. Saman`)**: Becomes **optional** when `2. Kategori Saman === "Dalam Siasatan"` (officer may leave it blank `""` or type a reference number). Remains **required** for `POL 170 A` / `POL 257`. Render `"-"` when blank in `SiasatanTable.jsx` & `SiasatanPrintSheet.jsx`; `addSiasatan` doc ID falls back to `no_saman || no_report || "smn"`; `formatPrintDocumentTitle` falls back to `no_saman || no_report || id`.
+   - **Penguatkuasaan (`9. Saman` UI Rows & CSV Import)**: `normalizeSamanList`, `validateSamanRows`, `deduplicateSamanObjects`, and `parseSamanCsv` also accept blank `nombor_saman` (`""`) whenever `kategori_saman === "Dalam Siasatan"` (each blank `"Dalam Siasatan"` row stays preserved in `saman_list` and counts as 1 entry without collapsing duplicates on `""`). Blank `nombor_saman` remains rejected for `POL 170 A` and `POL 257`.
+4. **Dashboard `Jumlah Saman`, `TrendBarChart` & CSV Export (Confirmed — Option B + Option 1B + Conditional Display)**:
+   - `aggregatePeriodSaman(records, operations)` tracks `"Dalam Siasatan"` separately (`dalamSiasatan`) alongside `pol170a`, `pol257`, and legacy `unset` (`"Belum Ditetapkan"`).
+   - **Blank `No. Saman` Inclusion (Option 1B)**: Records/entries with `kategori_saman === "Dalam Siasatan"` and empty `no_saman === ""` **ARE included** in `dalamSiasatan` and `total` (`Jumlah Saman`), keyed uniquely per document/entry (`__blank__:siasatan:<id>` / `__blank__:penguatkuasaan:<opId>:<idx>`) so they never falsely deduplicate against each other.
+   - **Cross-Collection Deduplication Priority (Confirmed)**: When a **non-empty `no_saman`** matches across Siasatan/Penguatkuasaan documents, higher-authority confirmed categories override lower ones: **`POL 170 A` / `POL 257` (3) > `Dalam Siasatan` (2) > `Belum Ditetapkan` (1)**.
+   - **Conditional UI & CSV Display (`dalamSiasatan > 0`, Confirmed)**:
+     - `App.jsx` `Jumlah Saman` `MetricCard` subtitle appends `· Dalam Siasatan: N` only when `dalamSiasatan > 0`.
+     - `TrendBarChart.jsx` displays the amber (`bg-amber-400`) **`Dalam Siasatan (N)`** legend item, stacked bar slice (`Perbandingan`), grouped bar (`Saman`), and tooltip breakdown only when `totals.dalamSiasatan > 0`.
+     - `Layout.jsx` Dashboard CSV export appends row `["Saman Dalam Siasatan", samanStats.dalamSiasatan, "Siasatan + Penguatkuasaan (unik / tanpa no.)"]` only when `samanStats.dalamSiasatan > 0`.
+5. **Visual Styling & Print Safety**:
+   - `SiasatanTable.jsx` renders `"Dalam Siasatan"` with distinct amber pill styling (`bg-amber-500/15 text-amber-300 border-amber-500/35`).
+   - `PenguatkuasaanTable.jsx` and `PenguatkuasaanPrintSheet.jsx` display `Dalam Siasatan (N)` cleanly in category breakdowns and omit trailing commas/empty lines if all entries lack `no_saman`.
+   - `firestore.rules` requires zero edits (role-gated only).
+
+##### 2. Verification Checklist *(for Implementing Agent — Phase 3)*
+- Confirm zero new dependencies in `package.json`; run full-repo `npm run lint` (`0 errors, 0 warnings`) and `npm run build` (clean exit `0`).
+- Verify `Borang Input Data Siasatan` & `Kemaskini Rekod Siasatan`: can save/edit `"Dalam Siasatan"` both with blank `1. No. Saman` and with populated `1. No. Saman`, still requires `No. Saman` for `POL 170 A`/`POL 257`, displays `"-"` + amber badge in `SiasatanTable`, and prints cleanly in `SiasatanPrintSheet` (filename falls back to `no_report` when `no_saman` is empty).
+- Verify `Penguatkuasaan` (`9. Saman` UI rows + CSV import): accepts `"Dalam Siasatan"` both with and without `nombor_saman`, rejects blank `nombor_saman` for `POL 170 A`/`POL 257`, preserves blank `"Dalam Siasatan"` entries across Edit Modal reopen/save, and renders clean summaries in `PenguatkuasaanTable` & `PenguatkuasaanPrintSheet`.
+- Verify Dashboard (`App.jsx`, `TrendBarChart.jsx`, `Layout.jsx` CSV): includes blank and numbered `"Dalam Siasatan"` items in `Jumlah Saman`, deduplicates numbered matches with priority (`POL 170 A`/`POL 257` > `Dalam Siasatan` > `Belum Ditetapkan`), and conditionally displays amber `Dalam Siasatan` breakdown only when `> 0`.
+
+##### 3. All Phase 3 Owner Clarifications Resolved
+1. Optional `No. Saman` (`Option B`) across Siasatan & Penguatkuasaan (`Option 2B`).
+2. Blank-`No. Saman` `"Dalam Siasatan"` entries included in Dashboard `Jumlah Saman` / `Dalam Siasatan` totals (`Option 1B`).
+3. Cross-collection deduplication upgrades `"Dalam Siasatan"` -> confirmed `"POL 170 A"` / `"POL 257"`.
+4. Amber `"Dalam Siasatan"` indicator/bar/CSV row renders conditionally when `dalamSiasatan > 0`.
 
 ---
 

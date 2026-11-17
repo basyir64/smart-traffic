@@ -398,7 +398,9 @@ export function computeElementSubItems(elementNumber, docs = []) {
  * Formats a clean document title used by browsers as the default Save-as-PDF filename.
  */
 export function formatPrintDocumentTitle(record) {
-  const raw = String(record?.no_saman || record?.id || "Rekod")
+  const raw = String(
+    record?.no_saman || record?.no_report || record?.id || "Rekod"
+  )
     .trim()
     .replace(/[^A-Za-z0-9_-]+/g, "_");
   return `Rekod_Siasatan_${raw || "Rekod"}`;
